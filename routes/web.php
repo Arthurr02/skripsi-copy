@@ -1,9 +1,11 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AuthController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SeleksiController;
+use App\Http\Controllers\PeriodeRekrutmenController;
+use App\Http\Controllers\RekrutmenAktifController;
 
 // ==========================================
 // 1. HALAMAN DEPAN & AUTENTIKASI
@@ -25,8 +27,24 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
         return view('organisasi.dashboard');
     })->name('dashboard');
 
-    // Fitur Tambahan (Eksklusif Organisasi)
-    // Route::resource('panitia', KelolaPanitiaController::class);
+    Route::prefix('periode')->name('periode.')->group(function () {
+        // TAHAP 1: Pembentukan dasar periode & panitia
+        Route::get('/inisiasi', [PeriodeRekrutmenController::class, 'createInisiasi'])->name('inisiasi');
+        Route::post('/inisiasi', [PeriodeRekrutmenController::class, 'storeInisiasi'])->name('store_inisiasi');
+
+        // TAHAP 2: Pengaturan tahapan dan penugasan
+        Route::get('/{id}/skema', [PeriodeRekrutmenController::class, 'createSkema'])->name('skema');
+        Route::post('/{id}/skema', [PeriodeRekrutmenController::class, 'storeSkema'])->name('store_skema');
+
+    });
+
+    Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
+        Route::get('/saat-ini', [RekrutmenAktifController::class, 'index'])->name('index');
+        Route::get('/pendaftar', [RekrutmenAktifController::class, 'pendaftar'])->name('pendaftar');
+        Route::get('/tahapan', [RekrutmenAktifController::class, 'tahapan'])->name('tahapan');
+        Route::get('/update', [RekrutmenAktifController::class, 'updateInfo'])->name('update');
+    });
+
 
     // FITUR BERSAMA: Seleksi Peserta
     Route::get('/seleksi-peserta', [SeleksiController::class, 'index'])->name('seleksi.index');
