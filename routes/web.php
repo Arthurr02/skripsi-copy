@@ -39,10 +39,10 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
     });
 
     Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
-        Route::get('/saat-ini', [RekrutmenAktifController::class, 'index'])->name('index');
         Route::get('/pendaftar', [RekrutmenAktifController::class, 'pendaftar'])->name('pendaftar');
         Route::get('/tahapan', [RekrutmenAktifController::class, 'tahapan'])->name('tahapan');
-        Route::get('/update', [RekrutmenAktifController::class, 'updateInfo'])->name('update');
+        Route::get('/update-informasi/{periode_id?}', [RekrutmenAktifController::class, 'updateInfo'])->name('update');
+        Route::post('/update-informasi/{periode_id}', [RekrutmenAktifController::class, 'storeUpdateInfo'])->name('store_update');
     });
 
 

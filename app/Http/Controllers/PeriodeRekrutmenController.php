@@ -16,61 +16,82 @@ class PeriodeRekrutmenController extends Controller
     // ==========================================
     public function createInisiasi()
     {
-        return view('organisasi.periode.inisiasi');
+        return view('organisasi.buka-rekrutmen.inisiasi');
     }
 
     public function storeInisiasi(Request $request)
     {
-        // 1. Validasi Super Ketat dengan Regex STIS
+        // 1. Validasi Input Dasar
         $request->validate([
             'tahun_periode' => 'required|string',
             'email_panitia' => 'required|array|min:1',
             'email_panitia.*' => ['required', 'regex:/^\d{9}@stis\.ac\.id$/'],
+            'jabatan_panitia' => 'required|array',
+            'jabatan_panitia.*' => ['nullable', 'regex:/^[a-zA-Z0-9\s]*$/'],
         ], [
-            'email_panitia.*.regex' => 'Format email ditolak server. Pastikan berisi 9 digit NIM diikuti @stis.ac.id'
+            'email_panitia.*.regex' => 'Format email ditolak server. Pastikan berisi 9 digit NIM diikuti @stis.ac.id',
+            'jabatan_panitia.*.regex' => 'Jabatan hanya boleh mengandung huruf, angka, dan spasi.'
         ]);
+
+        $organisasiId = Auth::guard('organisasi')->id();
+
+        // 2. CEK VALDASI 1: Apakah ada rekrutmen yang SEDANG BERJALAN AKTIF (status_aktif = 1)
+        $rekrutmenAktif = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+            ->where('status_aktif', 1)
+            ->first();
+
+        if ($rekrutmenAktif) {
+            // Jika ada rekrutmen yang masih berjalan, tolak inisiasi baru
+            return back()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' yang sedang berjalan aktif. Anda harus menyelesaikan atau menonaktifkannya terlebih dahulu sebelum bisa membuka rekrutmen baru.');
+        }
+
+        // 3. CEK VALIDASI 2: Apakah tahun periode yang dipilih sudah pernah dibuat (Pencegahan Data Ganda)
+        $periodeSama = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+            ->where('tahun_periode', $request->tahun_periode)
+            ->first();
+
+        if ($periodeSama) {
+            return back()->with('periode_terdaftar', 'Rekrutmen untuk periode ' . $request->tahun_periode . ' sudah pernah diinisiasi oleh organisasi Anda.');
+        }
 
         DB::beginTransaction();
         try {
-            // 2. Buat Draft Periode
-            $periode = PeriodeRekrutmen::create([
-                'organisasi_id' => Auth::guard('organisasi')->id(),
+            // 4. Buat Draft Periode (status_aktif diset 0 dulu sebagai draf, nanti akan jadi 1 saat skema disimpan di halaman update info)
+            $periode = \App\Models\PeriodeRekrutmen::create([
+                'organisasi_id' => $organisasiId,
                 'tahun_periode' => $request->tahun_periode,
                 'status_aktif' => 0,
             ]);
 
-            // 3. Olah Array Email dan Langsung Masukkan ke Tabel Anggota Organisasi
             $emails = $request->email_panitia;
+            $jabatans = $request->jabatan_panitia;
 
-            foreach ($emails as $email) {
+            // Looping data panitia
+            foreach ($emails as $index => $email) {
                 $email = trim($email);
-
-                // Ekstrak NIM dari email (Contoh: 222212602@stis.ac.id dipotong menjadi 222212602)
                 $nim = explode('@', $email)[0];
 
-                // [OPSIONAL TAPI PENTING] 
-                // Jika database Anda mewajibkan NIM harus terdaftar di tabel mahasiswa dulu (Foreign Key),
-                // kita buatkan "Data Bayangan" sementara. Saat mereka login via Google nanti, datanya otomatis diperbarui.
+                $jabatanInput = isset($jabatans[$index]) ? trim($jabatans[$index]) : null;
+                $jabatanFinal = !empty($jabatanInput) ? $jabatanInput : 'panitia';
+
                 \App\Models\Mahasiswa::firstOrCreate(
                     ['nim' => $nim],
                     [
                         'email_kampus' => $email,
-                        'nama_lengkap' => 'Panitia (Belum Login)' // Nama sementara
+                        'nama_lengkap' => 'Panitia (Belum Login)'
                     ]
                 );
 
-                // 4. Daftarkan sebagai panitia
                 \App\Models\AnggotaOrganisasi::create([
                     'periode_rekrutmen_id' => $periode->id,
                     'nim' => $nim,
-                    'jabatan' => 'panitia',
+                    'jabatan' => $jabatanFinal,
                     'panitia_rekrutmen' => 1
                 ]);
             }
 
             DB::commit();
 
-            // Kembali ke halaman dengan membawa sinyal untuk memunculkan Popup
             return back()->with([
                 'success_inisiasi' => true,
                 'periode_id' => $periode->id,
@@ -79,7 +100,6 @@ class PeriodeRekrutmenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Jika database error, kirim pesan error ke layar
             return back()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
         }
     }
@@ -90,7 +110,7 @@ class PeriodeRekrutmenController extends Controller
     public function createSkema($id)
     {
         $periode = PeriodeRekrutmen::findOrFail($id);
-        return view('organisasi.periode.skema', compact('periode'));
+        return view('organisasi.buka-rekrutmen.skema', compact('periode'));
     }
 
     public function storeSkema(Request $request, $id)
@@ -101,5 +121,15 @@ class PeriodeRekrutmenController extends Controller
         $periode->update(['status_aktif' => 1]);
 
         return redirect()->route('organisasi.dashboard')->with('success', 'Skema Rekrutmen Resmi Dibuka!');
+    }
+
+    public function tahapan()
+    {
+        return $this->hasMany(Tahapan::class, 'periode_rekrutmen_id');
+    }
+
+    public function jabatan()
+    {
+        return $this->hasMany(Jabatan::class, 'periode_rekrutmen_id');
     }
 }

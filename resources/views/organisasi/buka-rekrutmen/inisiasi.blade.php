@@ -5,7 +5,7 @@
         <form
             action="{{ route('organisasi.periode.store_inisiasi') }}"
             method="POST"
-            class="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+            class="space-y-6 max-w-4xl bg-white p-6 rounded-lg shadow-sm border border-gray-200"
         >
             @csrf
 
@@ -18,7 +18,7 @@
                 @endphp
                 <select
                     name="tahun_periode"
-                    class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm w-full md:w-1/2"
+                    class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm w-full md:w-1/3"
                     required
                 >
                     @for ($i = 0; $i <= 5; $i++)
@@ -39,9 +39,8 @@
 
             <div
                 x-data="{ 
-                panitia: [{ email: '', pesanError: '' }],
+                panitia: [{ email: '', jabatan: '', pesanError: '', pesanErrorJabatan: '' }],
                 
-                // Fungsi validasi real-time saat kursor keluar (blur)
                 validasiEmail(index) {
                     const nilai = this.panitia[index].email;
                     const regexSTIS = /^\d{9}@stis\.ac\.id$/;
@@ -51,12 +50,23 @@
                     } else if (!regexSTIS.test(nilai)) {
                         this.panitia[index].pesanError = 'Format salah! Harus 9 digit angka NIM diikuti @stis.ac.id';
                     } else {
-                        this.panitia[index].pesanError = ''; // Validasi sukses
+                        this.panitia[index].pesanError = '';
+                    }
+                },
+
+                validasiJabatan(index) {
+                    const nilai = this.panitia[index].jabatan;
+                    const regexAlfanumerik = /^[a-zA-Z0-9\s]*$/;
+                    
+                    if (nilai !== '' && !regexAlfanumerik.test(nilai)) {
+                        this.panitia[index].pesanErrorJabatan = 'Jabatan hanya boleh berisi huruf, angka, dan spasi.';
+                    } else {
+                        this.panitia[index].pesanErrorJabatan = '';
                     }
                 },
                 
                 tambahBaris() {
-                    this.panitia.push({ email: '', pesanError: '' });
+                    this.panitia.push({ email: '', jabatan: '', pesanError: '', pesanErrorJabatan: '' });
                 },
                 
                 hapusBaris(index) {
@@ -65,9 +75,9 @@
             }"
             >
                 <label class="block font-bold text-gray-700 mb-2"
-                    >Daftar Email Panitia</label
+                    >Daftar Akun Panitia</label
                 >
-                <p class="mb-4 text-sm text-gray-500">Daftar email kampus mahasiswa yang ingin ditunjuk sebagai panitia.</p>
+                <p class="mb-4 text-sm text-gray-500">Daftar email kampus mahasiswa dan jabatannya di organisasi yang ingin ditunjuk sebagai panitia.</p>
 
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -75,9 +85,14 @@
                             class="bg-gray-50 border-b border-t border-gray-200"
                         >
                             <th
-                                class="px-4 py-2 text-sm font-semibold text-gray-600"
+                                class="px-4 py-2 text-sm font-semibold text-gray-600 w-1/2"
                             >
                                 Email Kampus Mahasiswa
+                            </th>
+                            <th
+                                class="px-4 py-2 text-sm font-semibold text-gray-600 w-1/2"
+                            >
+                                Jabatan di Organisasi (Opsional)
                             </th>
                             <th
                                 class="px-4 py-2 text-sm font-semibold text-gray-600 w-24 text-center"
@@ -106,7 +121,6 @@
                                             : ''"
                                         required
                                     />
-
                                     <p
                                         x-show="baris.pesanError"
                                         x-text="baris.pesanError"
@@ -114,6 +128,28 @@
                                         style="display: none"
                                     ></p>
                                 </td>
+
+                                <td class="px-2 py-3">
+                                    <input
+                                        type="text"
+                                        name="jabatan_panitia[]"
+                                        x-model="baris.jabatan"
+                                        @blur="validasiJabatan(index)"
+                                        @input="baris.pesanErrorJabatan = ''"
+                                        placeholder="contoh: Ketua / Anggota Kastrat"
+                                        class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm transition-colors"
+                                        :class="baris.pesanErrorJabatan
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50'
+                                            : ''"
+                                    />
+                                    <p
+                                        x-show="baris.pesanErrorJabatan"
+                                        x-text="baris.pesanErrorJabatan"
+                                        class="text-red-500 text-xs mt-1 font-medium"
+                                        style="display: none"
+                                    ></p>
+                                </td>
+
                                 <td class="px-2 py-3 text-center pt-5">
                                     <button
                                         type="button"
@@ -146,7 +182,11 @@
                     <button
                         type="submit"
                         class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="panitia.some((b) => b.pesanError !== '')"
+                        :disabled="panitia.some(
+                            (b) =>
+                                b.pesanError !== '' ||
+                                b.pesanErrorJabatan !== '',
+                        )"
                     >
                         Buka Rekrutmen
                     </button>
@@ -157,10 +197,8 @@
 </x-app-layout>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // 1. TANGKAP ERROR SERVER (Jika query database gagal)
         @if (session('error_server'))
         Swal.fire({
             icon: 'error',
@@ -174,23 +212,21 @@
         });
         @endif
 
-        // 2. TANGKAP ERROR VALIDASI LARAVEL (Jika email tidak ditemukan/format salah)
         @if ($errors->any())
         Swal.fire({
             icon: 'warning',
             title: 'Validasi Gagal',
             html: `
-                    <ul class="text-left text-red-500 text-sm font-medium">
-                        @foreach ($errors->all() as $error)
-                            <li>- {{ $error }}</li>
-                        @endforeach
-                    </ul>
-                `,
+                <ul class="text-left text-red-500 text-sm font-medium">
+                    @foreach ($errors->all() as $error)
+                        <li>- {{ $error }}</li>
+                    @endforeach
+                </ul>
+            `,
             confirmButtonColor: '#3b82f6',
         });
         @endif
 
-        // 3. TANGKAP SINYAL SUKSES & MUNCULKAN POPUP KEPUTUSAN
         @if (session('success_inisiasi'))
         Swal.fire({
             icon: 'success',
@@ -201,20 +237,46 @@
         )
     }} berhasil dibuat dan panitia telah terdaftar.',
             showCancelButton: true,
-            confirmButtonColor: '#2563eb', // Warna biru untuk aksi utama
-            cancelButtonColor: '#6b7280', // Warna abu-abu untuk aksi sekunder
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
             confirmButtonText: 'Lengkapi Skema Langsung',
-            cancelButtonText: 'Nanti Saja (Simpan Draf)',
-            allowOutsideClick: false, // Memaksa user memilih salah satu tombol
+            cancelButtonText: 'Nanti Saja',
+            allowOutsideClick: false,
         }).then((result) => {
             if (result.isConfirmed) {
-                // Arahkan ke halaman pengaturan tahapan dan penugasan
                 window.location.href = '{{ route('organisasi.periode.skema', session('periode_id')) }}';
             } else {
-                // Arahkan kembali ke Dashboard
                 window.location.href = '{{ route('organisasi.dashboard') }}';
             }
         });
         @endif
     });
+
+    // TANGKAP PERINGATAN PERIODE SUDAH DIBUKA
+    @if (session('periode_terdaftar'))
+    Swal.fire({
+        icon: 'warning',
+        title: 'Rekrutmen Sudah Pernah Dibuka',
+        text: '{!!
+        session(
+            'periode_terdaftar',
+        )
+    !!}',
+        confirmButtonColor: '##dc2626',
+    });
+    @endif
+
+    // TANGKAP BLOKIR: JIKA MASIH ADA REKRUTMEN YANG BERJALAN AKTIF
+    @if (session('rekrutmen_sedang_berjalan'))
+    Swal.fire({
+        icon: 'warning',
+        title: 'Aksi Ditangguhkan',
+        text: '{!!
+        session(
+            'rekrutmen_sedang_berjalan',
+        )
+    !!}',
+        confirmButtonColor: '#dc2626', // Warna Merah Peringatan (Tailwind red-600)
+    });
+    @endif
 </script>
