@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -17,53 +18,62 @@ class AuthController extends Controller
     }
 
     // 2. Menangani balasan dari Google setelah user memilih akun
-    public function callback()
+    public function callback(Request $request)
     {
         try {
             $googleUser = Socialite::driver('google')->user();
-            $email = $googleUser->email;
 
-            // JALUR A: Cek apakah ini akun Organisasi (DPM/BEM)
+            $email = $googleUser->email;
+            $avatarUrl = $googleUser->avatar;
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            // =====================
+            // Login Organisasi
+            // =====================
             $organisasi = Organisasi::where('email_kampus', $email)->first();
+
             if ($organisasi) {
+                $organisasi->update([
+                    'avatar_google' => $avatarUrl,
+                ]);
+
                 Auth::guard('organisasi')->login($organisasi);
+                $request->session()->regenerate();
                 return redirect()->route('organisasi.dashboard');
             }
 
-            // JALUR B & C: Jika bukan organisasi, berarti Mahasiswa (bisa Pendaftar atau Panitia)
+            // =====================
+            // Login Mahasiswa
+            // =====================
             $nim = explode('@', $email)[0];
+
             $mahasiswa = Mahasiswa::updateOrCreate(
                 ['nim' => $nim],
                 [
                     'google_id' => $googleUser->id,
                     'email_kampus' => $email,
                     'nama_lengkap' => $googleUser->name,
+                    'avatar_google' => $avatarUrl,
                 ]
             );
 
-            Auth::guard('web')->login($mahasiswa);
+            Auth::guard('mahasiswa')->login($mahasiswa);
 
-            // ==========================================
-            // PERBAIKAN PENGALIHAN (REDIRECT) DI SINI
-            // ==========================================
-            // Sistem akan mengecek pangkat mahasiswa sesaat setelah login
-            if ($mahasiswa->isAnggota()) {
+            // Regenerate session setelah login
+            $request->session()->regenerate();
+
+            if ($mahasiswa->isPanitia()) {
                 return redirect()->route('panitia.dashboard');
-            } else {
-                return redirect()->route('mahasiswa.dashboard');
             }
 
-        } catch (\Exception $e) {
-            // Log error ke file storage/logs/laravel.log agar bisa dibaca nanti
-            \Log::error($e->getMessage());
-            return redirect('/')->with('error', 'Terjadi kesalahan sistem.');
-        }
-    }
+            return redirect()->route('mahasiswa.dashboard');
 
-    // 3. Fungsi untuk Logout
-    public function logout()
-    {
-        Auth::logout();
-        return redirect('/');
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return redirect('/')
+                ->with('error', 'Mohon gunakan akun email kampus STIS');
+        }
     }
 }

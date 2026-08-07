@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('tugas_id')->constrained('tugas')->cascadeOnDelete();
             $table->foreignId('pendaftaran_id')->constrained('pendaftaran')->cascadeOnDelete();
+            $table->foreignId('pewawancara_id')->nullable()->constrained('panitia')->nullOnDelete();
 
             $table->json('lampiran_jawaban')->nullable();
             $table->timestamps();

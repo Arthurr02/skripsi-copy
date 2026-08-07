@@ -15,7 +15,7 @@ class IsPanitia
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && auth()->user()->isAnggota()) {
+        if (auth()->check() && auth()->user()->isPanitia()) {
             return $next($request); // Silakan lewat
         }
 

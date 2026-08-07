@@ -14,10 +14,19 @@ class Organisasi extends Authenticatable
 
     protected $table = 'organisasi';
 
+
+
     // Sesuaikan primary key jika bukan 'id'
     // protected $primaryKey = 'id'; 
 
     protected $guarded = [];
+
+    protected $fillable = [
+        'email_kampus',
+        'nama_organisasi',
+        'lampiran_logo',
+        'avatar_google', // <--- Daftarkan di sini
+    ];
 
     // Jika password tidak digunakan (karena pakai Google), 
     // Laravel terkadang tetap mencari kolom password, kita biarkan kosong saja.

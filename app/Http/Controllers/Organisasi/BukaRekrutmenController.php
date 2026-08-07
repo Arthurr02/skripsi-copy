@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Http\Controllers\Organisasi;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\PeriodeRekrutmen;
+use App\Models\Panitia;
+use App\Models\Mahasiswa;
+
+class BukaRekrutmenController extends Controller
+{
+    public function index()
+    {
+        return view('organisasi.buka-rekrutmen.index');
+    }
+
+    public function storeInisiasi(Request $request)
+    {
+        // 1. Validasi Input Dasar
+        $request->validate([
+            'tahun_periode' => 'required|string',
+            'nim_panitia' => 'required|array|min:1',
+            'nim_panitia.*' => ['required', 'regex:/^\d{9}$/'],
+            'nim_panitia.*.regex' => 'NIM panitia tidak valid. Pastikan berisi tepat 9 digit angka.',
+        ]);
+
+        $organisasiId = Auth::guard('organisasi')->id();
+
+        // 2. CEK VALDASI : Apakah ada rekrutmen yang SEDANG BERJALAN AKTIF (status_aktif = 1)
+        $rekrutmenAktif = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+            ->whereIn('status_aktif', [1, 2])
+            ->first();
+
+        if ($rekrutmenAktif) {
+            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' sedang berjalan. Lakukan penyelesaian atau penonaktifan terlebih dahulu.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // 3. Buat Draft Periode
+            $periode = \App\Models\PeriodeRekrutmen::create([
+                'organisasi_id' => $organisasiId,
+                'tahun_periode' => $request->tahun_periode,
+                'status_aktif' => 1,
+            ]);
+
+            $nims = $request->nim_panitia;
+
+            // 4. Looping data NIM panitia dan konversi otomatis menjadi Email
+            foreach ($nims as $nim) {
+                $nim = trim($nim);
+                $emailDikonversi = $nim . '@stis.ac.id'; // Penggabungan otomatis di sisi server
+
+                \App\Models\Mahasiswa::firstOrCreate(
+                    ['nim' => $nim],
+                    [
+                        'email_kampus' => $emailDikonversi,
+                        'nama_lengkap' => 'Panitia (Belum Login)'
+                    ]
+                );
+
+                \App\Models\Panitia::create([
+                    'periode_rekrutmen_id' => $periode->id,
+                    'nim' => $nim,
+                ]);
+            }
+
+            DB::commit();
+
+            return back()->with([
+                'success_inisiasi' => true,
+                'periode_id' => $periode->id,
+                'tahun_periode' => $periode->tahun_periode
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
+        }
+    }
+
+    public function tahapan()
+    {
+        return $this->hasMany(Tahapan::class, 'periode_rekrutmen_id');
+    }
+
+    public function jabatan()
+    {
+        return $this->hasMany(Jabatan::class, 'periode_rekrutmen_id');
+    }
+}

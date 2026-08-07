@@ -14,6 +14,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('periode_rekrutmen_id')->nullable()->constrained('periode_rekrutmen')->nullOnDelete();
             $table->string('nama_jabatan');
+            $table->string('nama_posisi');
+
             $table->timestamps();
         });
     }

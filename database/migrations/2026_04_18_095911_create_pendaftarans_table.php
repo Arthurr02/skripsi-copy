@@ -15,6 +15,7 @@ return new class extends Migration {
 
             $table->string('nim', 9)->nullable();
             $table->foreign('nim')->references('nim')->on('mahasiswa')->nullOnDelete();
+            $table->string('status_seleksi')->nullable();
 
             $table->foreignId('jabatan_1_id')->nullable()->constrained('jabatan')->nullOnDelete();
             $table->foreignId('jabatan_2_id')->nullable()->constrained('jabatan')->nullOnDelete();

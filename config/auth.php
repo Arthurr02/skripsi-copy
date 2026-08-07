@@ -16,7 +16,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
+        'guard' => env('AUTH_GUARD', 'mahasiswa'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -38,12 +38,11 @@ return [
     */
 
     'guards' => [
-        'web' => [
+        'mahasiswa' => [
             'driver' => 'session',
             'provider' => 'users',
         ],
 
-        // TAMBAHKAN INI
         'organisasi' => [
             'driver' => 'session',
             'provider' => 'organisasis',

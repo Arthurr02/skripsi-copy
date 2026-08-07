@@ -24,8 +24,7 @@ class Tugas extends Model
         'lampiran_tugas'
     ];
 
-    // app/Models/Tugas.php
     protected $casts = [
-        'lampiran_tugas' => 'array', // Otomatis decode JSON menjadi Array
+        'lampiran_tugas' => 'array',
     ];
 }

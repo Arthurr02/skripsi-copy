@@ -14,9 +14,9 @@ class PeriodeRekrutmenController extends Controller
     // ==========================================
     // TAHAP 1: INISIASI (Pembuatan Dasar & Panitia)
     // ==========================================
-    public function createInisiasi()
+    public function index()
     {
-        return view('organisasi.buka-rekrutmen.inisiasi');
+        return view('organisasi.buka-rekrutmen.index');
     }
 
     public function storeInisiasi(Request $request)
@@ -24,13 +24,10 @@ class PeriodeRekrutmenController extends Controller
         // 1. Validasi Input Dasar
         $request->validate([
             'tahun_periode' => 'required|string',
-            'email_panitia' => 'required|array|min:1',
-            'email_panitia.*' => ['required', 'regex:/^\d{9}@stis\.ac\.id$/'],
-            'jabatan_panitia' => 'required|array',
-            'jabatan_panitia.*' => ['nullable', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'nim_panitia' => 'required|array|min:1',
+            'nim_panitia.*' => ['required', 'regex:/^\d{9}$/'],
         ], [
-            'email_panitia.*.regex' => 'Format email ditolak server. Pastikan berisi 9 digit NIM diikuti @stis.ac.id',
-            'jabatan_panitia.*.regex' => 'Jabatan hanya boleh mengandung huruf, angka, dan spasi.'
+            'nim_panitia.*.regex' => 'NIM panitia tidak valid. Pastikan berisi tepat 9 digit angka.',
         ]);
 
         $organisasiId = Auth::guard('organisasi')->id();
@@ -41,43 +38,38 @@ class PeriodeRekrutmenController extends Controller
             ->first();
 
         if ($rekrutmenAktif) {
-            // Jika ada rekrutmen yang masih berjalan, tolak inisiasi baru
-            return back()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' yang sedang berjalan aktif. Anda harus menyelesaikan atau menonaktifkannya terlebih dahulu sebelum bisa membuka rekrutmen baru.');
+            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' yang sedang berjalan aktif. Anda harus menyelesaikan atau menonaktifkannya terlebih dahulu sebelum bisa membuka rekrutmen baru.');
         }
 
-        // 3. CEK VALIDASI 2: Apakah tahun periode yang dipilih sudah pernah dibuat (Pencegahan Data Ganda)
+        // 3. CEK VALIDASI 2: Apakah tahun periode yang dipilih sudah pernah dibuat
         $periodeSama = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
             ->where('tahun_periode', $request->tahun_periode)
             ->first();
 
         if ($periodeSama) {
-            return back()->with('periode_terdaftar', 'Rekrutmen untuk periode ' . $request->tahun_periode . ' sudah pernah diinisiasi oleh organisasi Anda.');
+            return back()->withInput()->with('periode_terdaftar', 'Rekrutmen untuk periode ' . $request->tahun_periode . ' sudah pernah diinisiasi oleh organisasi Anda.');
         }
 
         DB::beginTransaction();
         try {
-            // 4. Buat Draft Periode (status_aktif diset 0 dulu sebagai draf, nanti akan jadi 1 saat skema disimpan di halaman update info)
+            // 4. Buat Draft Periode
             $periode = \App\Models\PeriodeRekrutmen::create([
                 'organisasi_id' => $organisasiId,
                 'tahun_periode' => $request->tahun_periode,
                 'status_aktif' => 0,
             ]);
 
-            $emails = $request->email_panitia;
-            $jabatans = $request->jabatan_panitia;
+            $nims = $request->nim_panitia;
 
-            // Looping data panitia
-            foreach ($emails as $index => $email) {
-                $email = trim($email);
-                $nim = explode('@', $email)[0];
-
-                $jabatanInput = isset($jabatans[$index]) ? trim($jabatans[$index]) : null;
-                $jabatanFinal = !empty($jabatanInput) ? $jabatanInput : 'panitia';
+            // 5. Looping data NIM panitia dan konversi otomatis menjadi Email
+            foreach ($nims as $nim) {
+                $nim = trim($nim);
+                $emailDikonversi = $nim . '@stis.ac.id'; // Penggabungan otomatis di sisi server
 
                 \App\Models\Mahasiswa::firstOrCreate(
                     ['nim' => $nim],
                     [
-                        'email_kampus' => $email,
+                        'email_kampus' => $emailDikonversi,
                         'nama_lengkap' => 'Panitia (Belum Login)'
                     ]
                 );
@@ -85,7 +77,7 @@ class PeriodeRekrutmenController extends Controller
                 \App\Models\AnggotaOrganisasi::create([
                     'periode_rekrutmen_id' => $periode->id,
                     'nim' => $nim,
-                    'jabatan' => $jabatanFinal,
+                    'jabatan' => 'Panitia Rekrutmen', // Jabatan paten
                     'panitia_rekrutmen' => 1
                 ]);
             }
@@ -100,27 +92,8 @@ class PeriodeRekrutmenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
+            return back()->withInput()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
         }
-    }
-
-    // ==========================================
-    // TAHAP 2: SKEMA (Tahapan & Penugasan)
-    // ==========================================
-    public function createSkema($id)
-    {
-        $periode = PeriodeRekrutmen::findOrFail($id);
-        return view('organisasi.buka-rekrutmen.skema', compact('periode'));
-    }
-
-    public function storeSkema(Request $request, $id)
-    {
-        // TODO: Logika insert tahapan & penugasan akan ditambahkan di sini nanti
-
-        $periode = PeriodeRekrutmen::findOrFail($id);
-        $periode->update(['status_aktif' => 1]);
-
-        return redirect()->route('organisasi.dashboard')->with('success', 'Skema Rekrutmen Resmi Dibuka!');
     }
 
     public function tahapan()

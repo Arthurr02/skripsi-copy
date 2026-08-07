@@ -14,7 +14,6 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('tahapan_id')->constrained('tahapan')->cascadeOnDelete();
             $table->foreignId('jabatan_id')->nullable()->constrained('jabatan')->nullOnDelete();
-            $table->foreignId('pewawancara_id')->nullable()->constrained('anggota_organisasi')->nullOnDelete();
 
             $table->string('tipe_tugas');
             $table->string('tipe_jawaban_tugas');

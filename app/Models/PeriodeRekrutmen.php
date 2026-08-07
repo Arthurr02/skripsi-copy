@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // 🌟 WAJIB DITAMBAHKAN
 
 class PeriodeRekrutmen extends Model
 {
@@ -11,6 +12,15 @@ class PeriodeRekrutmen extends Model
 
     protected $table = 'periode_rekrutmen';
 
-    // Tambahkan baris ini untuk membuka izin insert data
     protected $guarded = [];
+
+    protected $casts = [
+        'lampiran_banner' => 'array',
+        'lampiran_pedoman' => 'array',
+    ];
+
+    public function organisasi()
+    {
+        return $this->belongsTo(Organisasi::class, 'organisasi_id', 'id');
+    }
 }

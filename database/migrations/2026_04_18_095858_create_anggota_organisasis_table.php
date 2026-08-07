@@ -10,12 +10,10 @@ return new class extends Migration {
      */
     public function up()
     {
-        Schema::create('anggota_organisasi', function (Blueprint $table) {
+        Schema::create('panitia', function (Blueprint $table) {
             $table->id();
             $table->foreignId('periode_rekrutmen_id')->nullable()->constrained('periode_rekrutmen')->nullOnDelete();
             $table->string('nim', 9);
-            $table->string('jabatan')->nullable();
-            $table->boolean('panitia_rekrutmen')->default(false);
             $table->timestamps();
         });
     }
@@ -25,6 +23,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('anggota_organisasis');
+        Schema::dropIfExists('panitia');
     }
 };
