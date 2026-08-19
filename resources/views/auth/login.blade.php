@@ -13,7 +13,7 @@
                 class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-gradient-to-br from-blue-100/80 to-blue-50/20 blur-[100px]"
             ></div>
             <div
-                class="absolute top-[20%] -right-[10%] w-[35%] h-[40%] rounded-full bg-gradient-to-bl from-indigo-100/60 to-transparent blur-[120px]"
+                class="absolute top-[20%] -right-[10%] w-[35%] h-[40%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
             ></div>
             <div
                 class="absolute -bottom-[20%] left-[20%] w-[50%] h-[50%] rounded-full bg-gradient-to-tr from-sky-100/60 to-transparent blur-[100px]"
@@ -39,7 +39,7 @@
                                 class="relative w-36 h-36 bg-white rounded-full p-0.5 flex items-center justify-center ring-[10px] ring-blue-50 shadow-sm border border-slate-100"
                             >
                                 <img
-                                    src="https://stis.ac.id/media/source/up.png"
+                                    src="{{ asset('storage/rekrutmen/logo/logo-polstatSTIS.png') }}"
                                     alt="Logo Politeknik Statistika STIS"
                                     class="w-full h-full object-contain"
                                     loading="lazy"

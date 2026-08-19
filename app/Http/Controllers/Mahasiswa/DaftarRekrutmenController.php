@@ -75,7 +75,7 @@ class DaftarRekrutmenController extends Controller
         // -------------------------------------------
 
         // Lempar $groupedJabatan (bukan hanya $jabatans mentah) ke tampilan
-        return view('mahasiswa.rekrutmen.form-daftar', compact('rekrutmen', 'tahapanSatu', 'jabatans', 'groupedJabatan'));
+        return view('mahasiswa.rekrutmen.pendaftaran.index', compact('rekrutmen', 'tahapanSatu', 'jabatans', 'groupedJabatan'));
     }
 
     public function submitPendaftaran(Request $request, $periode_id)

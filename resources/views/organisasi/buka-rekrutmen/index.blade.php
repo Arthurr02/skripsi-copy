@@ -22,7 +22,7 @@
             >
                 Buka Rekrutmen
             </h2>
-            <p class="text-sm text-slate-500 mt-2 leading-relaxed">Pembukaan rekrutmen dilakukan untuk membuka penerimaan anggota baru organisasi yang melalui berbagai tahapan seleksi.</p>
+            <p class="text-sm text-slate-500 mt-2 leading-relaxed">Buka rekrutmen untuk mengadakan penerimaan anggota baru dari organisasi.</p>
         </div>
 
         <!-- KONTEN FORM -->
@@ -48,7 +48,7 @@
                         $tahunSekarang + 1 . '/' . ($tahunSekarang + 2),
                     ];
                 @endphp
-                <p class="text-xs font-normal text-slate-500 mb-5">Pilih tahun ajaran kepengurusan dari rekrutmen ini.</p>
+                <p class="text-xs font-normal text-slate-500 mb-5">Pilih tahun ajaran saat pembukaan rekrutmen ini.</p>
                 <select
                     name="tahun_periode"
                     class="block w-full md:w-1/2 bg-slate-50 border border-slate-300 text-slate-700 text-sm font-bold focus:border-blue-600 focus:ring-0 rounded-md py-3 transition-colors"
@@ -136,9 +136,9 @@
                     <label
                         class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide"
                     >
-                        Kepanitiaan Rekrutmen
+                        Panitia Rekrutmen
                     </label>
-                    <p class="text-xs font-normal text-slate-500">Masukkan NIM mahasiswa yang bertugas sebagai panitia rekrutmen.</p>
+                    <p class="text-xs font-normal text-slate-500">Masukkan NIM mahasiswa yang akan bertugas sebagai panitia rekrutmen.</p>
                 </div>
 
                 <div class="overflow-hidden border border-slate-200 rounded-md">
@@ -153,7 +153,7 @@
                                 <th
                                     class="px-5 py-3 text-xs font-bold text-slate-600 uppercase tracking-wide w-32 text-center"
                                 >
-                                    Tindakan
+                                    Tombol Hapus
                                 </th>
                             </tr>
                         </thead>
@@ -301,7 +301,7 @@
     @if (session('rekrutmen_sedang_berjalan'))
     Swal.fire({
         icon: 'warning',
-        title: 'Rekrutmen Sedang Berjalan',
+        title: 'GALAT',
         text: '{!!
         session(
             'rekrutmen_sedang_berjalan',

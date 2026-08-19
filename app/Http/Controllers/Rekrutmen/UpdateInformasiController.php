@@ -255,7 +255,8 @@ class UpdateInformasiController extends Controller
                             if ($jIndex !== 0)
                                 continue;
 
-                            foreach ($mapJabatanId as $namaJabatan => $jabatanIdFinal) {
+                            // 🌟 PERBAIKAN: Gunakan $mapJabatanIndex, BUKAN $mapJabatanId
+                            foreach ($mapJabatanIndex as $finalIndex => $jabatanIdFinal) {
                                 $tipeTugas = $urutan === 1 ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
                                 $tipeJawaban = ($tipeTugas === 'pengisian_form') ? 'form' : (($tipeTugas === 'wawancara') ? 'wawancara' : (isset($tugasData['format_proyek']) ? implode(',', $tugasData['format_proyek']) : ''));
 
@@ -277,7 +278,8 @@ class UpdateInformasiController extends Controller
 
                             // LOGIKA BARU: Cari berdasarkan Index dahulu agar akurat, lalu fallback ke nama jabatan
                             $jabatanIdFinal = $mapJabatanIndex[$jIndex] ?? ($mapJabatanId[trim($tugasData['nama_jabatan'])] ?? null);
-
+                            if (!$jabatanIdFinal)
+                                continue;
                             $pathsRaw = json_decode($tugasData['berkas_lama_json'] ?? '[]', true);
                             while (is_string($pathsRaw)) {
                                 $pathsRaw = json_decode($pathsRaw, true);

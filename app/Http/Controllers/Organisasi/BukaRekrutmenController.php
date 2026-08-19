@@ -35,7 +35,7 @@ class BukaRekrutmenController extends Controller
             ->first();
 
         if ($rekrutmenAktif) {
-            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' sedang berjalan. Lakukan penyelesaian atau penonaktifan terlebih dahulu.');
+            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen sedang berlangsung. Lakukan penyelesaian atau non-aktifkan terlebih dahulu.');
         }
 
         DB::beginTransaction();

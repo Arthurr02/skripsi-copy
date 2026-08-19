@@ -62,29 +62,76 @@ class RekrutmenDiikutiController extends Controller
     /**
      * Menampilkan detail timeline tahapan berdasarkan ID Pendaftaran
      */
+    /**
+     * Menampilkan detail timeline tahapan berdasarkan ID Pendaftaran
+     */
     public function showTahapan($id)
     {
         $user = Auth::user();
 
-        // 1. Ambil pendaftaran dengan Eager Loading menggunakan NAMA FUNGSI RELASI
+        // 1. Ambil pendaftaran dengan Eager Loading
         $pendaftaran = Pendaftaran::with([
-            'pilihanJabatan1.periode.organisasi' // Pastikan relasinya bernama 'periode' di model Jabatan
+            'pilihanJabatan1.periode.organisasi'
         ])
             ->where('id', $id)
             ->where('nim', $user->nim) // Proteksi keamanan akun mahasiswa
             ->firstOrFail();
 
-        // 2. Ambil tahapan sekaligus filter tugas HANYA untuk formasi prioritas utama
+        // 2. Setup Data Header (Relasi Organisasi, Banner, dan Jabatan)
+        $jabatanUtama = $pendaftaran->pilihanJabatan1;
+        $periode = $jabatanUtama ? $jabatanUtama->periode : null;
+        $organisasi = $periode ? $periode->organisasi : null;
+
+        $namaOrganisasi = $organisasi->nama_organisasi ?? 'Organisasi';
+
+        $avatarUrl = '';
+        if ($organisasi) {
+            if (!empty($organisasi->avatar_google)) {
+                $avatarUrl = str_replace('http://', 'https://', $organisasi->avatar_google);
+            } elseif (!empty($organisasi->lampiran_logo)) {
+                $avatarUrl = asset('storage/' . $organisasi->lampiran_logo);
+            }
+        }
+
+        $bannerData = $periode->lampiran_banner ?? null;
+        $bannerArray = is_string($bannerData) ? json_decode($bannerData, true) : $bannerData;
+        $bannerPath = is_array($bannerArray) && count($bannerArray) > 0 ? $bannerArray[0] : null;
+
+        $namaJabatanUtama = $jabatanUtama->nama_jabatan ?? 'Jabatan Tidak Diketahui';
+        $namaPosisiUtama = (!empty($jabatanUtama->nama_posisi) && $jabatanUtama->nama_posisi !== '-')
+            ? $jabatanUtama->nama_posisi
+            : 'Tanpa Divisi Khusus';
+
+        // 3. Ambil dan Format Data Tahapan (Tanpa membebani Blade)
+        $now = now();
         $tahapans = Tahapan::with([
             'tugas' => function ($query) use ($pendaftaran) {
-                $query->where('jabatan_id', $pendaftaran->jabatan_1_id); // Di dalam query builder, kita tetap pakai nama kolom DB
+                $query->where('jabatan_id', $pendaftaran->jabatan_1_id);
             }
         ])
-            ->where('periode_rekrutmen_id', $pendaftaran->pilihanJabatan1->periode_rekrutmen_id) // Pakai 'pilihanJabatan1', BUKAN 'jabatan_1'
+            ->where('periode_rekrutmen_id', $jabatanUtama->periode_rekrutmen_id ?? 0)
             ->orderBy('urutan_tahapan', 'asc')
-            ->get();
+            ->get()
+            ->map(function ($tahapan) use ($now) {
+                // Konversi dan injeksi properti waktu langsung ke objek
+                $mulai = \Carbon\Carbon::parse($tahapan->waktu_mulai);
+                $berakhir = \Carbon\Carbon::parse($tahapan->waktu_berakhir);
 
-        // 3. Ambil array ID tugas yang sudah dikerjakan untuk efisiensi Blade
+                $tahapan->parsed_mulai = $mulai;
+                $tahapan->parsed_berakhir = $berakhir;
+                $tahapan->is_past = $berakhir->isPast();
+                $tahapan->is_active = $mulai->lte($now) && $berakhir->gte($now);
+                $tahapan->is_future = $mulai->isFuture();
+                $tahapan->is_waktu_tunggal = $mulai->equalTo($berakhir);
+
+                // Parsing Lampiran Pedoman
+                $pedomanArray = is_string($tahapan->lampiran_tahapan) ? json_decode($tahapan->lampiran_tahapan, true) : $tahapan->lampiran_tahapan;
+                $tahapan->pedoman_path = is_array($pedomanArray) && count($pedomanArray) > 0 ? $pedomanArray[0] : null;
+
+                return $tahapan;
+            });
+
+        // 4. Ambil Tugas Dikumpulkan
         $tugasDikumpulkan = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
             ->pluck('tugas_id')
             ->toArray();
@@ -92,7 +139,12 @@ class RekrutmenDiikutiController extends Controller
         return view('mahasiswa.diikuti.daftar-tahapan', compact(
             'pendaftaran',
             'tahapans',
-            'tugasDikumpulkan'
+            'tugasDikumpulkan',
+            'namaOrganisasi',
+            'avatarUrl',
+            'bannerPath',
+            'namaJabatanUtama',
+            'namaPosisiUtama'
         ));
     }
 }

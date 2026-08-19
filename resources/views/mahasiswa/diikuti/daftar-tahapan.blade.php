@@ -1,222 +1,141 @@
 <x-app-layout>
-    @php
-        // 1. Variabel Tahapan Info
-        $tahapanInfo = $tahapanSatu ?? null;
-        $namaTahapan = $tahapanInfo->nama_tahapan ?? 'Pendaftaran & Seleksi Berkas';
-        $deskripsiUmum =
-            $tahapanInfo->deskripsi_tahapan ??
-            'Silakan lengkapi formulir pendaftaran dan unggah berkas yang diminta.';
-
-        // 2. Logika Parsing Waktu
-        $rawMulai =
-            $tahapanInfo && $tahapanInfo->waktu_mulai
-                ? \Carbon\Carbon::parse($tahapanInfo->waktu_mulai)
-                : null;
-        $rawBerakhir =
-            $tahapanInfo && $tahapanInfo->waktu_berakhir
-                ? \Carbon\Carbon::parse($tahapanInfo->waktu_berakhir)
-                : null;
-        $isWaktuTunggal =
-            $rawMulai && $rawBerakhir ? $rawMulai->equalTo($rawBerakhir) : false;
-
-        $waktuMulaiStr = $rawMulai ? $rawMulai->translatedFormat('d M Y H:i') : '-';
-        $waktuSelesaiStr = $rawBerakhir
-            ? $rawBerakhir->translatedFormat('d M Y H:i')
-            : 'Tanpa Tenggat';
-
-        // 3. Logika Relasi Organisasi & Banner
-        $periode = $pendaftaran->periode ?? null;
-        $organisasi = $periode->organisasi ?? null;
-        $namaOrganisasi = $organisasi->nama_organisasi ?? 'Organisasi';
-
-        $avatarUrl = '';
-        if ($organisasi) {
-            if (!empty($organisasi->avatar_google)) {
-                $avatarUrl = str_replace(
-                    'http://',
-                    'https://',
-                    $organisasi->avatar_google,
-                );
-            } elseif (!empty($organisasi->lampiran_logo)) {
-                $avatarUrl = asset('storage/' . $organisasi->lampiran_logo);
-            }
-        }
-
-        $bannerData = $periode->lampiran_banner ?? null;
-        $bannerArray = is_string($bannerData)
-            ? json_decode($bannerData, true)
-            : $bannerData;
-        $bannerPath =
-            is_array($bannerArray) && count($bannerArray) > 0 ? $bannerArray[0] : null;
-
-        // 4. LOGIKA FAIL-SAFE: Mengambil Nama Jabatan
-        // Jika relasi terputus di controller, kita ambil manual via ID
-        $namaJabatanUtama = 'Jabatan Tidak Diketahui';
-
-        if (!empty($pendaftaran->jabatan_1->nama_jabatan)) {
-            $namaJabatanUtama = $pendaftaran->jabatan_1->nama_jabatan;
-        } elseif (!empty($pendaftaran->jabatan_1_id)) {
-            $jabatanBackup = \App\Models\Jabatan::find($pendaftaran->jabatan_1_id);
-            if ($jabatanBackup) {
-                $namaJabatanUtama = $jabatanBackup->nama_jabatan;
-            }
-        }
-    @endphp
-
-    <!-- Background Aksen Atas -->
+    <!-- Background Flat Gelap (Diselaraskan dengan Form Pendaftaran) -->
     <div
-        class="absolute top-0 inset-x-0 h-[300px] bg-slate-900 -z-10 overflow-hidden"
+        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10 bg-slate-50"
     >
-        @if ($bannerPath)
-            <img
-                src="{{ asset('storage/' . $bannerPath) }}"
-                alt="Banner"
-                class="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-luminosity"
-            />
-        @else
-            <div class="absolute inset-0 opacity-10">
-                <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <pattern id="grid-pattern" width="32" height="32" patternUnits="userSpaceOnUse">
-                            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" class="text-slate-100" stroke-width="1" />
-                        </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-                </svg>
-            </div>
-        @endif
         <div
-            class="absolute inset-0 bg-gradient-to-t from-slate-50 via-blue-800/60 to-transparent"
+            class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6bTIwIDIwaDIwdjIwSDIwaC0yMHptMCAwaC0yMHYtMjBoMjB2MjB6IiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iI2YxZjVmOSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')] opacity-60"
+        ></div>
+        <div
+            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-200/80 to-blue-50/20 blur-[100px]"
+        ></div>
+        <div
+            class="absolute top-[10%] right-[10%] w-[35%] h-[50%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
         ></div>
     </div>
 
     <!-- AREA HEADER -->
-    <div
-        class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-10 pb-16"
-    >
-        <nav class="mb-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-8 relative z-10 pt-8 pb-3">
+        <nav class="mb-6">
             <a
                 href="{{ route('mahasiswa.rekrutmen.diikuti.index') }}"
-                class="inline-flex items-center text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md border border-slate-700 shadow-sm"
+                class="inline-flex items-center text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-colors bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 rounded-md shadow-sm"
             >
                 <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 Kembali ke Riwayat
             </a>
         </nav>
 
+        <!-- Header Profil (Gaya Kartu Putih) -->
         <div
-            class="flex flex-col md:flex-row md:items-center justify-between gap-6"
+            class="py-6 flex flex-col md:flex-row items-center md:items-start gap-5 text-center md:text-left"
         >
-            <div class="flex items-start gap-4">
-                <!-- Avatar Organisasi -->
-                <div class="shrink-0 hidden sm:block">
-                    @if (!empty($avatarUrl))
-                        <img
-                            src="{{ $avatarUrl }}"
-                            alt="Logo"
-                            class="w-16 h-16 rounded-md object-cover bg-white p-1 border border-slate-200 shadow-sm"
-                        />
-                    @else
-                        <div
-                            class="w-16 h-16 rounded-md bg-blue-600 text-white flex items-center justify-center text-2xl font-black uppercase border border-blue-700 shadow-sm"
-                        >
-                            {{
-                                substr(
-                                    $namaOrganisasi,
-                                    0,
-                                    1,
-                                )
-                            }}
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Info Title -->
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span
-                            class="px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold uppercase tracking-widest shadow-sm"
-                        >
-                            Pilihan Utama
-                        </span>
-                        <span class="text-slate-300 text-sm font-bold">
-                            {{ $namaOrganisasi }}
-                        </span>
-                    </div>
-
-                    <!-- Menampilkan Jabatan dengan Variabel yang Aman -->
-                    <h1
-                        class="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight mb-1"
+            <div class="shrink-0 hidden sm:block">
+                @if (!empty($avatarUrl))
+                    <!-- Gambar Utama -->
+                    <img
+                        src="{{ $avatarUrl }}"
+                        alt="Logo"
+                        class="w-20 h-20 rounded-full object-contain bg-white p-0.5 border border-slate-200 shadow-sm"
+                        referrerpolicy="no-referrer"
+                        onerror="
+                            this.style.display = 'none';
+                            document.getElementById(
+                                'header-fallback-logo',
+                            ).style.display = 'flex';
+                        "
+                    />
+                    <!-- Fallback Tersembunyi (Akan muncul jika gambar di atas gagal dimuat) -->
+                    <div
+                        id="header-fallback-logo"
+                        style="display: none"
+                        class="w-20 h-20 rounded-full bg-blue-600 text-white items-center justify-center text-2xl font-black uppercase border border-blue-700 shadow-sm"
                     >
-                        {{ $namaJabatanUtama }}
-                    </h1>
+                        {{
+                            substr(
+                                $namaOrganisasi,
+                                0,
+                                1,
+                            )
+                        }}
+                    </div>
+                @else
+                    <!-- Jika tidak ada URL sama sekali -->
+                    <div
+                        class="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xl font-black uppercase border border-blue-700 shadow-sm"
+                    >
+                        {{
+                            substr(
+                                $namaOrganisasi,
+                                0,
+                                1,
+                            )
+                        }}
+                    </div>
+                @endif
+            </div>
+
+            <!-- Info Title -->
+            <div class="flex-1 mt-1 md:mt-0">
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 justify-center md:justify-start"
+                >
+                    <span
+                        class="px-2 py-0.5 bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold uppercase tracking-widest shadow-sm w-max mx-auto md:mx-0"
+                    >
+                        Pilihan Utama
+                    </span>
+                    <span
+                        class="text-slate-500 text-xs font-bold uppercase tracking-widest"
+                    >
+                        {{ $namaOrganisasi }}
+                    </span>
                 </div>
+
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{{ $namaPosisiUtama }}</p>
+                <h1
+                    class="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight"
+                >
+                    {{ $namaJabatanUtama }}
+                </h1>
             </div>
         </div>
     </div>
 
-    <!-- AREA KONTEN (TIMELINE) -->
-    <div
-        class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 pb-24 relative z-20"
-    >
+    <!-- AREA KONTEN (TIMELINE YANG DIPERKECIL) -->
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-20">
         <div
-            class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 sm:p-8"
+            class="bg-white rounded-lg shadow-sm border border-slate-200 p-5 sm:p-6"
         >
             <h2
-                class="text-lg font-extrabold text-slate-800 border-b border-slate-200 pb-4 mb-8 flex items-center gap-2.5"
+                class="text-base font-extrabold text-slate-800 border-b border-slate-200 pb-3 mb-6 flex items-center gap-2"
             >
                 <div
-                    class="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center text-blue-600"
+                    class="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </div>
-                Perjalanan Seleksi Anda
+                Jadwal Tahapan Seleksi
             </h2>
 
-            <!-- TIMELINE CONTAINER -->
             <div class="relative w-full overflow-hidden">
                 <!-- Garis Vertikal Timeline -->
                 <div
                     class="absolute border-l-2 border-slate-200 h-full left-5 top-4"
                 ></div>
 
-                @php
-                    $now = now();
-                @endphp
-
                 @foreach ($tahapans as $index => $tahapan)
-                    @php
-                        // Logika Penentuan Status Tahapan
-                        $waktuMulai = \Carbon\Carbon::parse($tahapan->waktu_mulai);
-                        $waktuBerakhir = \Carbon\Carbon::parse($tahapan->waktu_berakhir);
-
-                        $isPast = $waktuBerakhir->isPast();
-                        $isActive = $waktuMulai->lte($now) && $waktuBerakhir->gte($now);
-                        $isFuture = $waktuMulai->isFuture();
-
-                        $isWaktuTunggal = $waktuMulai->equalTo($waktuBerakhir);
-
-                        $pedomanArray = is_string($tahapan->lampiran_tahapan)
-                            ? json_decode($tahapan->lampiran_tahapan, true)
-                            : $tahapan->lampiran_tahapan;
-                        $pedomanPath =
-                            is_array($pedomanArray) && count($pedomanArray) > 0
-                                ? $pedomanArray[0]
-                                : null;
-
-                        $tugasJabatan = $tahapan->tugas;
-                    @endphp
                     <div
-                        class="mb-10 flex justify-between items-start w-full relative"
+                        class="mb-6 flex justify-between items-start w-full relative"
                     >
                         <!-- Indikator Lingkaran Timeline -->
                         <div
                             class="relative z-10 w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold shadow-sm ring-4 ring-white 
-                            {{ $isPast ? 'bg-emerald-500 text-white' : ($isActive ? 'bg-blue-600 text-white ring-blue-50' : 'bg-slate-100 text-slate-400 border border-slate-300') }}"
+                            {{ $tahapan->is_past ? 'bg-emerald-500 text-white' : ($tahapan->is_active ? 'bg-blue-600 text-white ring-blue-50' : 'bg-slate-100 text-slate-400 border border-slate-300') }}"
                         >
-                            @if ($isPast)
+                            @if ($tahapan->is_past)
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                            @elseif ($isActive)
+                            @elseif ($tahapan->is_active)
                                 <span
                                     class="block w-2.5 h-2.5 bg-white rounded-full"
                                 ></span>
@@ -225,121 +144,120 @@
                             @endif
                         </div>
 
-                        <!-- Kartu Tahapan -->
-                        <div class="ml-6 w-full flex-1">
+                        <!-- Kartu Tahapan Lebih Ringkas -->
+                        <div class="ml-4 w-full flex-1">
                             <div
-                                class="bg-white rounded-lg border transition-colors duration-300 {{ $isActive ? 'border-blue-300 shadow-md' : 'border-slate-200 shadow-sm' }}"
+                                class="bg-white rounded-lg border transition-colors duration-300 {{ $tahapan->is_active ? 'border-blue-500 shadow-sm' : 'border-slate-200' }}"
                             >
                                 <!-- Card Header -->
                                 <div
-                                    class="p-5 sm:p-6 border-b border-slate-100 {{ $isActive ? 'bg-blue-50/50' : 'bg-slate-50' }} rounded-t-lg flex flex-col md:flex-row md:items-start justify-between gap-4"
+                                    class="p-3 sm:p-4 border-b border-slate-100 {{ $tahapan->is_active ? 'bg-blue-200' : 'bg-slate-100' }} rounded-t-lg flex flex-col sm:flex-row sm:items-start justify-between gap-2"
                                 >
                                     <div class="flex-1">
                                         <div
-                                            class="flex items-center gap-2 mb-2"
+                                            class="flex items-center gap-2 mb-1"
                                         >
                                             <span
-                                                class="text-[10px] font-black tracking-widest uppercase {{ $isActive ? 'text-blue-600' : 'text-slate-400' }}"
+                                                class="text-[9px] font-black tracking-widest uppercase {{ $tahapan->is_active ? 'text-blue-600' : 'text-slate-400' }}"
                                             >
                                                 Tahap {{ $tahapan->urutan_tahapan }}
                                             </span>
-                                            @if ($isActive)
+                                            @if ($tahapan->is_active)
                                                 <span
-                                                    class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200"
+                                                    class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200"
                                                 >
                                                     Sedang Berjalan
                                                 </span>
                                             @endif
                                         </div>
                                         <h3
-                                            class="text-lg font-extrabold text-slate-800 leading-tight"
+                                            class="text-sm font-extrabold text-slate-800 leading-tight"
                                         >
                                             {{ $tahapan->nama_tahapan }}
                                         </h3>
-                                        <p class="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                                            {{
-                                                $tahapan->deskripsi_tahapan ??
-                                                    'Tidak ada deskripsi untuk tahapan ini.'
-                                            }}
-                                        </p>
+                                        @if ($tahapan->deskripsi_tahapan)
+                                            <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                                                {{ $tahapan->deskripsi_tahapan }}
+                                            </p>
+                                        @endif
                                     </div>
 
                                     <div
-                                        class="shrink-0 text-left md:text-right bg-white md:bg-transparent border md:border-none border-slate-200 p-3 md:p-0 rounded-md"
+                                        class="shrink-0 text-left sm:text-right"
                                     >
-                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Periode Pelaksanaan</p>
-                                        @if ($isWaktuTunggal)
-                                            <p class="text-sm font-bold text-slate-800">
-                                                {{
-                                                    $waktuMulai->translatedFormat(
-                                                        'd M Y',
-                                                    )
-                                                }}
-                                            </p>
-                                            <p class="text-[11px] font-bold text-slate-500 mt-0.5">
-                                                {{ $waktuMulai->format('H:i') }} WIB
-                                            </p>
+                                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Waktu</p>
+                                        @if ($tahapan->is_waktu_tunggal)
+                                            <p class="text-xs font-bold text-slate-700">{{
+                                                $tahapan->parsed_mulai->translatedFormat(
+                                                    'd M Y',
+                                                )
+                                            }}</p>
+                                            <p class="text-[10px] font-bold text-slate-500">{{
+                                                $tahapan->parsed_mulai->format(
+                                                    'H:i',
+                                                )
+                                            }} WIB</p>
                                         @else
-                                            <p class="text-sm font-bold text-slate-800">
-                                                {{
-                                                    $waktuMulai->translatedFormat(
-                                                        'd M',
-                                                    )
-                                                }} - {{
-                                                    $waktuBerakhir->translatedFormat(
-                                                        'd M Y',
-                                                    )
-                                                }}
-                                            </p>
-                                            <p class="text-[11px] font-bold text-slate-500 mt-0.5">
-                                                {{ $waktuMulai->format('H:i') }} - {{
-                                                    $waktuBerakhir->format(
-                                                        'H:i',
-                                                    )
-                                                }} WIB
-                                            </p>
+                                            <p class="text-xs font-bold text-slate-700">{{
+                                                $tahapan->parsed_mulai->translatedFormat(
+                                                    'd M',
+                                                )
+                                            }} - {{
+                                                $tahapan->parsed_berakhir->translatedFormat(
+                                                    'd M Y',
+                                                )
+                                            }}</p>
+                                            <p class="text-[10px] font-bold text-slate-500">{{
+                                                $tahapan->parsed_mulai->format(
+                                                    'H:i',
+                                                )
+                                            }} - {{
+                                                $tahapan->parsed_berakhir->format(
+                                                    'H:i',
+                                                )
+                                            }}</p>
                                         @endif
                                     </div>
                                 </div>
 
                                 <!-- Card Body (Tugas & Lampiran) -->
-                                <div class="p-5 sm:p-6 space-y-6">
-                                    @if ($pedomanPath)
+                                <div class="p-3 sm:p-4 space-y-3">
+                                    @if ($tahapan->pedoman_path)
                                         <a
-                                            href="{{ asset('storage/' . $pedomanPath) }}"
+                                            href="{{ asset('storage/' . $tahapan->pedoman_path) }}"
                                             target="_blank"
-                                            class="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-xs font-bold text-slate-700 rounded-md shadow-sm transition-colors w-fit"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-600 rounded-md shadow-sm transition-colors w-fit"
                                         >
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                            Unduh Lampiran Tahapan
+                                            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            Unduh Panduan
                                         </a>
                                     @endif
 
-                                    @if ($tugasJabatan->isNotEmpty())
-                                        <div class="space-y-4">
+                                    @if ($tahapan->tugas->isNotEmpty())
+                                        <div class="space-y-2">
                                             <h4
-                                                class="text-xs font-extrabold text-slate-800 flex items-center gap-2 uppercase tracking-wide"
+                                                class="text-[10px] font-extrabold text-slate-600 flex items-center gap-1.5 uppercase tracking-wide border-t border-slate-100 pt-3"
                                             >
-                                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                                                Daftar Penugasan
+                                                <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                                Tugas
                                             </h4>
 
-                                            <div class="space-y-3">
-                                                @foreach ($tugasJabatan as $tugas)
-                                                    @php
-                                                        $sudahDikumpul = in_array($tugas->id, $tugasDikumpulkan ?? []);
-                                                    @endphp
+                                            <div class="space-y-2">
+                                                @foreach ($tahapan->tugas as $tugas)
+                                                    @php $sudahDikumpul = in_array($tugas->id, $tugasDikumpulkan ?? []); @endphp
                                                     <div
-                                                        class="bg-white border {{ $sudahDikumpul ? 'border-emerald-300' : 'border-slate-200' }} rounded-md p-4 sm:p-5 flex flex-col lg:flex-row gap-5 items-start lg:items-center justify-between shadow-sm"
+                                                        class="bg-white border {{ $sudahDikumpul ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200' }} rounded-md p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between"
                                                     >
-                                                        <div class="flex-1">
+                                                        <div
+                                                            class="flex-1 min-w-0"
+                                                        >
                                                             <div
-                                                                class="flex flex-wrap items-center gap-2 mb-2"
+                                                                class="flex flex-wrap items-center gap-2 mb-1"
                                                             >
                                                                 <span
-                                                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border {{ $tugas->tipe_jawaban_tugas == 'form' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-orange-50 text-orange-700 border-orange-200' }}"
+                                                                    class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border {{ $tugas->tipe_jawaban_tugas == 'form' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-orange-50 text-orange-700 border-orange-200' }}"
                                                                 >
-                                                                    Tipe: {{
+                                                                    {{
                                                                         str_replace(
                                                                             '_',
                                                                             ' ',
@@ -349,16 +267,15 @@
                                                                 </span>
                                                                 @if ($sudahDikumpul)
                                                                     <span
-                                                                        class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"
+                                                                        class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"
                                                                     >
-                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                                                                        Telah
+                                                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                                                                         Diserahkan
                                                                     </span>
                                                                 @endif
                                                             </div>
                                                             <h5
-                                                                class="text-sm font-extrabold text-slate-800 mb-1"
+                                                                class="text-xs font-extrabold text-slate-800 truncate"
                                                             >
                                                                 {{
                                                                     Str::title(
@@ -366,57 +283,42 @@
                                                                     )
                                                                 }}
                                                             </h5>
-                                                            <p class="text-xs text-slate-500 leading-relaxed">
-                                                                {{
-                                                                    $tugas->deskripsi_tugas ??
-                                                                        'Ikuti instruksi yang tertera pada pedoman atau lampiran.'
-                                                                }}
-                                                            </p>
                                                         </div>
 
                                                         <div
-                                                            class="w-full lg:w-auto shrink-0 flex gap-2"
+                                                            class="w-full sm:w-auto shrink-0 flex gap-2"
                                                         >
-                                                            @if ($isActive)
+                                                            @if ($tahapan->is_active)
                                                                 @if ($sudahDikumpul)
-                                                                    <a
-                                                                        {{-- href="{{ route('mahasiswa.rekrutmen.diikuti.tugas_detail', ['pendaftaran' => $pendaftaran->id, 'tugas' => $tugas->id]) }}" --}}
-                                                                        class="w-full lg:w-auto px-5 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-md hover:bg-slate-50 transition-colors text-center"
+                                                                    <button
+                                                                        disabled
+                                                                        class="w-full sm:w-auto px-4 py-1.5 bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold rounded cursor-not-allowed text-center"
                                                                     >
-                                                                        Lihat
-                                                                        Jawaban
-                                                                    </a>
+                                                                        Selesai
+                                                                    </button>
                                                                 @else
                                                                     <a
                                                                         href="{{ route('mahasiswa.rekrutmen.diikuti.tugas_detail', ['pendaftaran' => $pendaftaran->id, 'tugas' => $tugas->id]) }}"
-                                                                        class="w-full lg:w-auto flex justify-center py-2.5 px-6 bg-blue-600 text-xs font-bold text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm gap-2 items-center"
+                                                                        class="w-full sm:w-auto flex justify-center py-1.5 px-4 bg-blue-600 text-[10px] font-bold text-white rounded hover:bg-blue-700 transition-colors shadow-sm gap-1.5 items-center"
                                                                     >
                                                                         Kerjakan
-                                                                        Tugas
-                                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                                                     </a>
                                                                 @endif
-                                                            @elseif ($isFuture)
+                                                            @elseif ($tahapan->is_future)
                                                                 <button
                                                                     disabled
-                                                                    class="w-full lg:w-auto px-5 py-2.5 bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold rounded-md cursor-not-allowed text-center flex items-center justify-center gap-1.5"
+                                                                    class="w-full sm:w-auto px-4 py-1.5 bg-slate-50 border border-slate-200 text-slate-400 text-[10px] font-bold rounded cursor-not-allowed text-center flex items-center justify-center gap-1"
                                                                 >
-                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                                                                     Terkunci
                                                                 </button>
-                                                            @elseif ($isPast && !$sudahDikumpul)
+                                                            @elseif ($tahapan->is_past)
                                                                 <button
                                                                     disabled
-                                                                    class="w-full lg:w-auto px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-md cursor-not-allowed text-center"
+                                                                    class="w-full sm:w-auto px-4 py-1.5 bg-slate-100 border border-slate-200 text-slate-400 text-[10px] font-bold rounded cursor-not-allowed text-center"
                                                                 >
                                                                     Waktu Habis
-                                                                </button>
-                                                            @elseif ($isPast && $sudahDikumpul)
-                                                                <button
-                                                                    disabled
-                                                                    class="w-full lg:w-auto px-5 py-2.5 bg-slate-50 border border-slate-200 text-slate-500 text-xs font-bold rounded-md cursor-not-allowed text-center"
-                                                                >
-                                                                    Selesai
                                                                 </button>
                                                             @endif
                                                         </div>
