@@ -107,6 +107,9 @@ Route::middleware('auth')->prefix('mahasiswa')->name('mahasiswa.')->group(functi
     Route::prefix('/rekrutmen-diikuti')->name('rekrutmen.diikuti.')->group(function () {
         Route::get('/', [RekrutmenDiikutiController::class, 'index'])->name('index');
         Route::get('/tahapan/{id}', [RekrutmenDiikutiController::class, 'showTahapan'])->name('tahapan');
+        Route::get('/tugas-detail/{pendaftaran}/{tugas}', [RekrutmenDiikutiController::class, 'showTugasDetail'])->name('tugas_detail');
+        Route::post('/tugas-detail/{pendaftaran}/{tugas}', [RekrutmenDiikutiController::class, 'submitTugas'])->name('tugas_submit');
+        Route::post('/tugas-detail/{pendaftaran}/{tugas}/hadir', [RekrutmenDiikutiController::class, 'konfirmasiWawancara'])->name('wawancara_hadir');
     });
 
     // Menu 3: Riwayat Rekrutmen

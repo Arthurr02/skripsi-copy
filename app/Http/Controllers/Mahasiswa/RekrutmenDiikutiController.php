@@ -12,6 +12,7 @@ use App\Models\Jabatan;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Organisasi;
 use App\Models\Tahapan;
+use App\Models\Tugas; // 🌟 DITAMBAHKAN: Model Tugas
 use App\Models\PengumpulanTugas;
 
 class RekrutmenDiikutiController extends Controller
@@ -45,7 +46,7 @@ class RekrutmenDiikutiController extends Controller
 
                     // Kemas ke dalam object stdClass untuk dikirim ke view
                     $rekrutmenDiikuti[] = (object) [
-                        'id' => $daftar->id, // 🌟 KUNCI: Dipastikan menggunakan 'id' agar cocok dengan $item->id di Blade
+                        'id' => $daftar->id,
                         'periode' => $periode,
                         'organisasi' => $organisasi,
                         'jabatan_1' => $jabatan1,
@@ -59,9 +60,6 @@ class RekrutmenDiikutiController extends Controller
         return view('mahasiswa.diikuti.index', compact('rekrutmenDiikuti'));
     }
 
-    /**
-     * Menampilkan detail timeline tahapan berdasarkan ID Pendaftaran
-     */
     /**
      * Menampilkan detail timeline tahapan berdasarkan ID Pendaftaran
      */
@@ -146,5 +144,137 @@ class RekrutmenDiikutiController extends Controller
             'namaJabatanUtama',
             'namaPosisiUtama'
         ));
+    }
+
+    // =========================================================================
+    // FUNGSI BARU UNTUK MENANGANI PENUGASAN (FORM, FILE, & WAWANCARA)
+    // =========================================================================
+
+    /**
+     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
+     */
+    /**
+     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
+     */
+    /**
+     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
+     */
+    public function showTugasDetail($pendaftaran_id, $tugas_id)
+    {
+        $user = Auth::user();
+
+        // 1. Validasi Kepemilikan Data Pendaftaran
+        $pendaftaran = Pendaftaran::with('pilihanJabatan1.periode.organisasi')
+            ->where('id', $pendaftaran_id)
+            ->where('nim', $user->nim)
+            ->firstOrFail();
+
+        // 2. Ambil Data Tugas
+        $tugas = Tugas::findOrFail($tugas_id);
+
+        // 3. Ambil Riwayat Pengumpulan (Jika mahasiswa sudah pernah mengisi)
+        $pengumpulan = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
+            ->where('tugas_id', $tugas->id)
+            ->first();
+
+        // 4. Proses JSON Struktur Form Dinamis yang dibuat Panitia
+        $lampiranData = is_string($tugas->lampiran_tugas)
+            ? json_decode($tugas->lampiran_tugas, true)
+            : ($tugas->lampiran_tugas ?? []);
+
+        $komponenForm = $lampiranData['form'] ?? [];
+
+        // 5. Proses JSON Jawaban Mahasiswa (Disesuaikan dengan DB: lampiran_jawaban)
+        $jawabanSebelumnya = [];
+        if ($pengumpulan && !empty($pengumpulan->lampiran_jawaban)) {
+            $parsedJawaban = is_string($pengumpulan->lampiran_jawaban)
+                ? json_decode($pengumpulan->lampiran_jawaban, true)
+                : $pengumpulan->lampiran_jawaban;
+
+            // Ambil isian yang ada di dalam kunci "form"
+            $jawabanSebelumnya = $parsedJawaban['form'] ?? $parsedJawaban;
+        }
+
+        // Arahkan ke file View yang baru
+        return view('mahasiswa.diikuti.tugas-form', compact(
+            'pendaftaran',
+            'tugas',
+            'komponenForm',
+            'pengumpulan',
+            'jawabanSebelumnya'
+        ));
+    }
+
+    /**
+     * Memproses penerimaan unggahan file atau jawaban form dinamis
+     */
+    public function submitTugas(Request $request, $pendaftaran_id, $tugas_id)
+    {
+        $user = Auth::user();
+
+        $pendaftaran = Pendaftaran::where('id', $pendaftaran_id)
+            ->where('nim', $user->nim)
+            ->firstOrFail();
+
+        $tugas = Tugas::findOrFail($tugas_id);
+
+        $pengumpulan = PengumpulanTugas::firstOrNew([
+            'pendaftaran_id' => $pendaftaran->id,
+            'tugas_id' => $tugas->id
+        ]);
+
+        // Ambil data JSON lama agar tidak terhapus saat update
+        $existingJawaban = [];
+        if (!empty($pengumpulan->lampiran_jawaban)) {
+            $existingJawaban = is_string($pengumpulan->lampiran_jawaban)
+                ? json_decode($pengumpulan->lampiran_jawaban, true)
+                : $pengumpulan->lampiran_jawaban;
+        }
+
+        // 3. Logika Penyimpanan untuk Tugas Tipe "Form Dinamis"
+        if ($request->has('jawaban_form')) {
+            $existingJawaban['form'] = $request->input('jawaban_form');
+        }
+
+        // 4. Logika Penyimpanan untuk Tugas Tipe "Upload File / Project"
+        if ($request->hasFile('file_jawaban')) {
+            $path = $request->file('file_jawaban')->store('rekrutmen/tugas', 'public');
+            $existingJawaban['berkas'] = [$path];
+        }
+
+        // 5. Eksekusi Simpan ke Kolom lampiran_jawaban
+        $pengumpulan->lampiran_jawaban = json_encode($existingJawaban);
+        $pengumpulan->save();
+
+        return back()->with('success', 'Berhasil! Jawaban penugasan Anda telah disimpan.');
+    }
+
+    /**
+     * Memproses konfirmasi kehadiran untuk tipe tugas Wawancara
+     */
+    public function konfirmasiWawancara(Request $request, $pendaftaran_id, $tugas_id)
+    {
+        $user = Auth::user();
+
+        $pendaftaran = Pendaftaran::where('id', $pendaftaran_id)
+            ->where('nim', $user->nim)
+            ->firstOrFail();
+
+        $tugas = Tugas::findOrFail($tugas_id);
+
+        $pengumpulan = PengumpulanTugas::firstOrNew([
+            'pendaftaran_id' => $pendaftaran->id,
+            'tugas_id' => $tugas->id
+        ]);
+
+        // Catat kehadiran di dalam JSON
+        $pengumpulan->jawaban_form = json_encode([
+            'status_wawancara' => 'Hadir',
+            'waktu_konfirmasi' => now()->toDateTimeString()
+        ]);
+
+        $pengumpulan->save();
+
+        return back()->with('success', 'Konfirmasi kehadiran wawancara Anda berhasil dicatat!');
     }
 }
