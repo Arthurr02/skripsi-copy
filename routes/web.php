@@ -42,7 +42,13 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
 
     Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/pendaftar', [PendaftarController::class, 'index'])->name('pendaftar');
+
+        // 1. Halaman Pilih Posisi
         Route::get('/seleksi', [PengerjaanSeleksiController::class, 'index'])->name('seleksi');
+
+        // 2. Halaman Timeline Tugas (Tambahkan baris ini)
+        Route::get('/seleksi/{jabatan_id}/tahapan', [PengerjaanSeleksiController::class, 'tahapanJabatan'])->name('seleksi.tahapan');
+
         Route::get('/informasi/{periode_id?}', [UpdateInformasiController::class, 'index'])->name('update');
         Route::post('/informasi/{periode_id}', [UpdateInformasiController::class, 'store'])->name('store_update');
     });

@@ -10,8 +10,8 @@ class Jabatan extends Model
 {
     use HasFactory;
 
-    // KUNCI NAMA TABEL: Paksa Laravel menembak 'jabatan', bukan 'jabatans'
-    protected $table = 'jabatan';
+    protected $table = 'jabatan'; // Sesuaikan jika nama tabel Anda berbeda
+
 
     protected $fillable = [
         'periode_rekrutmen_id',

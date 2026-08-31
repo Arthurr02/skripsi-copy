@@ -53,6 +53,13 @@ class PendaftarController extends Controller
         }
 
         // Ambil daftar jabatan untuk filter Frontend
+        // KODE BARU (Diperbarui dengan relasi posisi)
+        // UBAH DARI INI:
+// $listJabatan = Jabatan::with('posisi')
+//     ->where('periode_rekrutmen_id', $periodeAktif->id)
+//     ->get();
+
+        // MENJADI SEPERTI INI:
         $listJabatan = Jabatan::where('periode_rekrutmen_id', $periodeAktif->id)->get();
 
         // 🌟 3. SUSUN KUERI DASAR PENDAFTAR
@@ -68,12 +75,26 @@ class PendaftarController extends Controller
             })
             ->select('pendaftaran.*'); // Sesuai nama tabel di DB (bukan pendaftarans)
 
-        // 🌟 4. LOGIKA FILTER: JABATAN
+        // 🌟 4. LOGIKA FILTER: JABATAN & CHECKBOX PILIHAN
         if ($request->filled('filter_jabatan')) {
             $jabatanId = $request->filter_jabatan;
-            $query->where(function ($q) use ($jabatanId) {
-                $q->where('jabatan_1_id', $jabatanId)
-                    ->orWhere('jabatan_2_id', $jabatanId);
+            $tipePilihan = $request->input('pilihan_tipe', []); // Array checkbox [1, 2]
+
+            $query->where(function ($q) use ($jabatanId, $tipePilihan) {
+                // Jika user mencentang keduanya atau tidak mencentang sama sekali (default perilaku awal)
+                if (empty($tipePilihan) || (in_array('1', $tipePilihan) && in_array('2', $tipePilihan))) {
+                    $q->where('jabatan_1_id', $jabatanId)
+                        ->orWhere('jabatan_2_id', $jabatanId);
+                } else {
+                    // Jika hanya centang Pilihan 1 saja
+                    if (in_array('1', $tipePilihan)) {
+                        $q->orWhere('jabatan_1_id', $jabatanId);
+                    }
+                    // Jika hanya centang Pilihan 2 saja
+                    if (in_array('2', $tipePilihan)) {
+                        $q->orWhere('jabatan_2_id', $jabatanId);
+                    }
+                }
             });
         }
 

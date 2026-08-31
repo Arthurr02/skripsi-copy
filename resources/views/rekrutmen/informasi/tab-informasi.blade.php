@@ -42,11 +42,12 @@
                     placeholder="Contoh: Pembukaan Rekrutmen Anggota Muda BEM"
                     required
                 />
-                <p x-show="errors['slogan']" x-text="
-                        errors['slogan']
-                    " class="mt-2 text-xs text-red-500 font-bold" style="
-                        display: none;
-                    "></p>
+                <p
+                    x-show="errors['slogan']"
+                    x-text="errors['slogan']"
+                    class="mt-2 text-xs text-red-500 font-bold"
+                    style="display: none"
+                ></p>
             </div>
 
             <!-- Deskripsi Input -->
@@ -80,11 +81,12 @@
                         )
                     }}</textarea
                 >
-                <p x-show="errors['deskripsi_rekrutmen']" x-text="
-                        errors['deskripsi_rekrutmen']
-                    " class="mt-2 text-xs text-red-500 font-bold" style="
-                        display: none;
-                    "></p>
+                <p
+                    x-show="errors['deskripsi_rekrutmen']"
+                    x-text="errors['deskripsi_rekrutmen']"
+                    class="mt-2 text-xs text-red-500 font-bold"
+                    style="display: none"
+                ></p>
             </div>
         </div>
 
@@ -155,11 +157,12 @@
                         </div>
                     </div>
                 </div>
-                <p x-show="errors['banner']" x-text="
-                        errors['banner']
-                    " class="mt-2 text-xs text-red-500 font-bold" style="
-                        display: none;
-                    "></p>
+                <p
+                    x-show="errors['banner']"
+                    x-text="errors['banner']"
+                    class="mt-2 text-xs text-red-500 font-bold"
+                    style="display: none"
+                ></p>
 
                 @if ($periode->lampiran_banner)
                     @php
@@ -251,11 +254,12 @@
                         </div>
                     </div>
                 </div>
-                <p x-show="errors['buku_pedoman']" x-text="
-                        errors['buku_pedoman']
-                    " class="mt-2 text-xs text-red-500 font-bold" style="
-                        display: none;
-                    "></p>
+                <p
+                    x-show="errors['buku_pedoman']"
+                    x-text="errors['buku_pedoman']"
+                    class="mt-2 text-xs text-red-500 font-bold"
+                    style="display: none"
+                ></p>
 
                 @if ($periode->lampiran_pedoman)
                     @php

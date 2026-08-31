@@ -14,7 +14,7 @@
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
+    <div class="p-8 md:p-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
         <!-- HEADER -->
         <div class="mb-10 relative z-10">
             <h2

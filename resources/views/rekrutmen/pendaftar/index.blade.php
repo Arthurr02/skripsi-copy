@@ -14,215 +14,245 @@
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
+    <div class="p-8 md:p-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
         <!-- HEADER SELARAS -->
         <div
-            class="mb-10 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8"
+            class="mb-8 pb-5 relative z-10 flex flex-col md:flex-row md:items-center justify-between"
         >
             <div>
                 <!-- Tipografi Solid Slate -->
                 <h2
                     class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-800 mb-2.5 leading-tight"
                 >
-                    Daftar Pendaftar <br class="hidden sm:block" />
-                    Calon Anggota
+                    Daftar Peserta
                 </h2>
 
                 <p class="text-sm font-normal text-slate-500 leading-relaxed">Memantau seluruh mahasiswa yang mengirimkan berkas pendaftaran pada periode aktif.</p>
             </div>
 
             <!-- Info Periode -->
-            @if ($periodeAktif)
-                <div
-                    class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 flex flex-col md:items-start justify-betweenring-1 ring-slate-900/5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
-                >
-                    <!-- Kontainer Flex untuk Titik Biru dan Teks -->
-                    <div class="flex items-center justify-center gap-2 mb-1.5">
-                        <span class="relative flex h-2 w-2">
-                            <span
-                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
-                            ></span>
-                            <span
-                                class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
-                            ></span>
-                        </span>
-                        <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
-                    </div>
-                    <!-- Angka Tahun -->
-                    <p class="text-2xl font-bold text-blue-600 tracking-tight">
-                        {{ $periodeAktif->tahun_periode }}
-                    </p>
-                </div>
-            @endif
-        </div>
-
-        <!-- Kartu Statistik -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
             <div
-                class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4"
+                class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 flex flex-col md:items-start justify-betweenring-1 ring-slate-900/5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
             >
-                <div class="p-3 bg-blue-100 text-blue-600 rounded-lg shrink-0">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
+                <!-- Kontainer Flex untuk Titik Biru dan Teks -->
+                <div class="flex items-center justify-center gap-2 mb-1.5">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
+                        ></span>
+                        <span
+                            class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
+                        ></span>
+                    </span>
+                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Pendaftar Masuk</p>
-                    <h3 class="text-2xl font-black text-slate-800 mt-0.5">
-                        {{ $totalPendaftar }} Orang
-                    </h3>
-                </div>
+                <!-- Angka Tahun -->
+                <p class="text-2xl font-bold text-blue-600 tracking-tight">
+                    {{ $periodeAktif->tahun_periode }}
+                </p>
             </div>
         </div>
 
         <!-- Tabel & Filter Container -->
         <div
-            class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden"
+            class="p-8 md:p-10 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden"
         >
-            <div
-                class="p-5 border-b border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row justify-between sm:items-center gap-4"
-            >
-                <h4
-                    class="text-xs font-extrabold text-slate-700 uppercase tracking-wider"
-                >
-                    Manajemen Data Pendaftar
-                </h4>
-            </div>
-
-            <!-- Area Filter -->
-            <div class="p-5 bg-white border-b border-slate-100">
+            <!-- Area Filter (Nested Select, Checkbox Pilihan, & Auto-Submit) -->
+            <div class="bg-white border-slate-100">
                 <form
                     method="GET"
                     action="{{ route('organisasi.rekrutmen.pendaftar') }}"
-                    class="flex flex-wrap md:flex-nowrap gap-4 items-end"
+                    class="flex flex-col gap-4"
                 >
-                    <div class="w-full md:w-1/4">
-                        <label
-                            class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
-                            >Pilihan Jabatan</label
-                        >
-                        <select
-                            name="filter_jabatan"
-                            class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors"
-                        >
-                            <option value="">Semua Jabatan</option>
-                            @if (isset($listJabatan))
-                                @foreach ($listJabatan as $jabatan)
-                                    <option
-                                        value="{{ $jabatan->id }}"
-                                        {{
-                                            request('filter_jabatan') == $jabatan->id
-                                                ? 'selected'
-                                                : ''
-                                        }}
-                                    >
-                                        {{ $jabatan->nama_jabatan }}
-                                    </option>
-                                @endforeach
-                            @endif
-                        </select>
-                    </div>
-
-                    <div class="w-full md:w-1/4">
-                        <label
-                            class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
-                            >Status Seleksi</label
-                        >
-                        <select
-                            name="filter_status"
-                            class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors"
-                        >
-                            <option value="">Semua Status</option>
-                            <option
-                                value="Menunggu Seleksi"
-                                {{
-                                    request('filter_status') ==
-                                    'Menunggu Seleksi'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Menunggu Seleksi
-                            </option>
-                            <option
-                                value="Lulus Tahap 1"
-                                {{
-                                    request('filter_status') ==
-                                    'Lulus Tahap 1'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Lulus Tahap 1
-                            </option>
-                            <option
-                                value="Lulus Tahap 2"
-                                {{
-                                    request('filter_status') ==
-                                    'Lulus Tahap 2'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Lulus Tahap 2
-                            </option>
-                            <option
-                                value="Tidak Lolos"
-                                {{
-                                    request('filter_status') == 'Tidak Lolos'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Tidak Lolos
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="w-full md:w-1/4">
-                        <label
-                            class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
-                            >Urutkan Berdasarkan</label
-                        >
-                        <select
-                            name="sort"
-                            class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors"
-                        >
-                            <option
-                                value="terbaru"
-                                {{
-                                    request('sort') == 'terbaru'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Waktu Pendaftaran (Terbaru)
-                            </option>
-                            <option
-                                value="nama"
-                                {{
-                                    request('sort') == 'nama'
-                                        ? 'selected'
-                                        : ''
-                                }}
-                                >Nama Pendaftar (A-Z)
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="w-full md:w-auto flex items-center gap-2">
-                        <button
-                            type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-6 rounded-lg shadow-sm transition-colors w-full md:w-auto whitespace-nowrap"
-                        >
-                            Terapkan
-                        </button>
-
-                        @if (request()->anyFilled([ 'filter_jabatan', 'filter_status', 'sort' ]))
-                            <a
-                                href="{{ route('organisasi.rekrutmen.pendaftar') }}"
-                                class="bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold py-2.5 px-4 rounded-lg transition-colors whitespace-nowrap border border-slate-200 hover:border-red-200"
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        <!-- 1. Nested Filter Posisi & Jabatan -->
+                        <div class="w-full md:w-2/5">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
                             >
-                                ✖ Reset
-                            </a>
-                        @endif
+                                Pilihan Posisi & Jabatan
+                            </label>
+                            <select
+                                name="filter_jabatan"
+                                onchange="this.form.submit()"
+                                class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors cursor-pointer"
+                            >
+                                <option value="">Semua Posisi & Jabatan</option>
+                                @if (isset($listJabatan))
+                                    @php
+                                        $groupedJabatan = collect($listJabatan)->groupBy(function ($item) {
+                                            return $item->nama_posisi ?? 'Tanpa Posisi';
+                                        });
+                                    @endphp
+                                    @foreach ($groupedJabatan as $namaPosisi => $jabatans)
+                                        <!-- Menggunakan ikon profil orang pada label optgroup -->
+                                        <optgroup label="👤  {{ $namaPosisi }}">
+                                            @foreach ($jabatans as $jabatan)
+                                                <option
+                                                    value="{{ $jabatan->id }}"
+                                                    {{
+                                                        request('filter_jabatan') == $jabatan->id
+                                                            ? 'selected'
+                                                            : ''
+                                                    }}
+                                                >
+                                                    {{ $jabatan->nama_jabatan }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+
+                        <!-- 2. Filter Status Seleksi -->
+                        <div class="w-full md:w-2/5">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
+                            >
+                                Status Seleksi
+                            </label>
+                            <select
+                                name="filter_status"
+                                onchange="this.form.submit()"
+                                class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors cursor-pointer"
+                            >
+                                <option value="">Semua Status</option>
+                                <option
+                                    value="Menunggu Seleksi"
+                                    {{
+                                        request('filter_status') ==
+                                        'Menunggu Seleksi'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                    >Menunggu Seleksi
+                                </option>
+                                <option
+                                    value="Lulus Tahap 1"
+                                    {{
+                                        request('filter_status') ==
+                                        'Lulus Tahap 1'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                    >Lulus Tahap 1
+                                </option>
+                                <option
+                                    value="Lulus Tahap 2"
+                                    {{
+                                        request('filter_status') ==
+                                        'Lulus Tahap 2'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                    >Lulus Tahap 2
+                                </option>
+                                <option
+                                    value="Tidak Lolos"
+                                    {{
+                                        request('filter_status') == 'Tidak Lolos'
+                                            ? 'selected'
+                                            : ''
+                                    }}
+                                    >Tidak Lolos
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 3. Tombol Reset -->
+                        <div
+                            class="w-full md:w-auto h-[38px] flex items-center"
+                        >
+                            @if (request()->anyFilled([
+                                    'filter_jabatan',
+                                    'filter_status',
+                                    'pilihan_tipe'
+                                ]))
+                                <a
+                                    href="{{ route('organisasi.rekrutmen.pendaftar') }}"
+                                    class="w-full md:w-max h-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold px-5 rounded-lg transition-colors border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5"
+                                    title="Hapus semua filter"
+                                >
+                                    ✖ Reset
+                                </a>
+                            @endif
+                        </div>
                     </div>
+
+                    <!-- Baris Tambahan: Checkbox Pilihan 1 / Pilihan 2 -->
+                    @if (request()->filled('filter_jabatan'))
+                        <div
+                            class="flex items-center gap-6 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium"
+                        >
+                            <span
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                                >Cari Berdasarkan:</span
+                            >
+
+                            <label
+                                class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    name="pilihan_tipe[]"
+                                    value="1"
+                                    onchange="this.form.submit()"
+                                    {{
+                                        in_array(
+                                            '1',
+                                            request('pilihan_tipe', ['1', '2']),
+                                        )
+                                            ? 'checked'
+                                            : ''
+                                    }}
+                                    class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500 w-4 h-4"
+                                />
+                                <span>Pilihan 1 Saja</span>
+                            </label>
+
+                            <label
+                                class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                            >
+                                <input
+                                    type="checkbox"
+                                    name="pilihan_tipe[]"
+                                    value="2"
+                                    onchange="this.form.submit()"
+                                    {{
+                                        in_array(
+                                            '2',
+                                            request('pilihan_tipe', ['1', '2']),
+                                        )
+                                            ? 'checked'
+                                            : ''
+                                    }}
+                                    class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500 w-4 h-4"
+                                />
+                                <span>Pilihan 2 Saja</span>
+                            </label>
+                        </div>
+                    @endif
                 </form>
+            </div>
+
+            <!-- Kartu Statistik -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 py-6">
+                <div
+                    class="bg-blue-50 py-3 px-5 rounded-lg flex items-center gap-4"
+                >
+                    <div class="text-blue-600 rounded-lg shrink-0">
+                        <svg class="size-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Pendaftar Masuk</p>
+                        <h3 class="text-2xl font-black text-slate-800 mt-0.5">
+                            {{ $totalPendaftar }} Peserta
+                        </h3>
+                    </div>
+                </div>
             </div>
 
             <!-- Tabel Data -->
@@ -232,7 +262,7 @@
                 >
                     <thead>
                         <tr
-                            class="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider"
+                            class="bg-gray-50 border border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider"
                         >
                             <th class="px-5 py-4 text-center w-12">No</th>
                             <th class="px-5 py-4">Waktu Daftar</th>
@@ -246,7 +276,7 @@
                     <tbody class="divide-y divide-slate-100 text-slate-700">
                         @forelse ($daftarPeserta as $index => $pendaftar)
                             <tr
-                                class="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                                class="hover:bg-blue-50/50 transition-colors border"
                             >
                                 <td
                                     class="px-5 py-4 text-center font-bold text-slate-400 text-xs"
@@ -287,26 +317,49 @@
                                             '-'
                                     }}
                                 </td>
+
+                                <!-- Kolom Pilihan Jabatan 1 (Format: Posisi | Jabatan) -->
                                 <td class="px-5 py-4">
+                                    @php
+                                        $jab1 = $pendaftar->pilihanJabatan1;
+                                        if ($jab1) {
+                                            $namaPos1 = $jab1->nama_posisi ?? '';
+                                            $namaJab1 = $jab1->nama_jabatan ?? '';
+                                            $teksJabatan1 = $namaPos1 ? "{$namaPos1} | {$namaJab1}" : $namaJab1;
+                                            $badgeClass1 = 'bg-blue-50 text-blue-700 border-blue-200';
+                                        } else {
+                                            $teksJabatan1 = 'Tidak Memilih';
+                                            $badgeClass1 = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                                        }
+                                    @endphp
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass1 }}"
                                     >
-                                        {{
-                                            $pendaftar->pilihanJabatan1
-                                                ->nama_jabatan ?? 'Tidak Memilih'
-                                        }}
+                                        {{ $teksJabatan1 }}
                                     </span>
                                 </td>
+
+                                <!-- Kolom Pilihan Jabatan 2 (Format: Posisi | Jabatan) -->
                                 <td class="px-5 py-4">
+                                    @php
+                                        $jab2 = $pendaftar->pilihanJabatan2;
+                                        if ($jab2) {
+                                            $namaPos2 = $jab2->nama_posisi ?? '';
+                                            $namaJab2 = $jab2->nama_jabatan ?? '';
+                                            $teksJabatan2 = $namaPos2 ? "{$namaPos2} | {$namaJab2}" : $namaJab2;
+                                            $badgeClass2 = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                                        } else {
+                                            $teksJabatan2 = 'Tidak Memilih';
+                                            $badgeClass2 = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                                        }
+                                    @endphp
                                     <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass2 }}"
                                     >
-                                        {{
-                                            $pendaftar->pilihanJabatan2
-                                                ->nama_jabatan ?? 'Tidak Memilih'
-                                        }}
+                                        {{ $teksJabatan2 }}
                                     </span>
                                 </td>
+
                                 <td class="px-5 py-4">
                                     @php
                                         $status = $pendaftar->status_seleksi ?? 'Menunggu Seleksi';
