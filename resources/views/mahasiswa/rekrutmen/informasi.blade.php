@@ -36,18 +36,9 @@
             class="absolute top-[10%] right-[10%] w-[35%] h-[50%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
         ></div>
     </div>
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
-        <!-- Breadcrumb Navigasi -->
-        <div class="mb-6">
-            <a
-                href="{{ route('mahasiswa.rekrutmen.index') }}"
-                class="inline-flex items-center text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-blue-600 transition-colors"
-            >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                Kembali ke Daftar Rekrutmen
-            </a>
-        </div>
-
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HERO COVER CARD (Profesional Flat Layout) -->
         <div
             class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8"
@@ -153,20 +144,27 @@
                         </p>
                     </div>
 
-                    <div class="shrink-0 flex items-center">
-                        <span
-                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-wide"
+                    <div
+                        class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 flex flex-col md:items-start justify-betweenring-1 ring-slate-900/5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
+                    >
+                        <!-- Kontainer Flex untuk Titik Biru dan Teks -->
+                        <div
+                            class="flex items-center justify-center gap-2 mb-1.5"
                         >
                             <span class="relative flex h-2 w-2">
                                 <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
                                 ></span>
                                 <span
-                                    class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
+                                    class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
                                 ></span>
                             </span>
-                            Pendaftaran Aktif
-                        </span>
+                            <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
+                        </div>
+                        <!-- Angka Tahun -->
+                        <p class="text-2xl font-bold text-blue-600 tracking-tight">
+                            {{ $rekrutmen->tahun_periode }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -365,10 +363,10 @@
 
             <!-- KOLOM KANAN (Aksi & Formasi) -->
             <div class="lg:col-span-4 space-y-6 lg:space-y-8">
-                <div class="sticky top-6 space-y-6 lg:space-y-8">
+                <div class="sticky top-6">
                     <!-- Call to Action Box -->
                     <div
-                        class="bg-blue-600 rounded-lg p-6 md:p-8 text-white shadow-sm border border-blue-700 relative overflow-hidden"
+                        class="bg-blue-600 rounded-t-lg p-6 md:p-8 text-white shadow-sm border border-blue-700 relative overflow-hidden"
                     >
                         <!-- Hiasan Sudut CTA -->
                         <div
@@ -379,14 +377,6 @@
                         ></div>
 
                         <div class="relative z-10">
-                            <h3
-                                class="text-xl font-extrabold mb-2.5 leading-tight"
-                            >
-                                Bergabung Bersama <br />
-                                {{ $namaOrganisasi }}
-                            </h3>
-                            <p class="text-blue-100 text-sm font-normal mb-8 leading-relaxed">Lengkapi persyaratan dan mulai proses pendaftaran Anda sekarang.</p>
-
                             <a
                                 href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
                                 class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-white text-blue-700 text-sm font-bold rounded-md hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
@@ -396,18 +386,16 @@
                             </a>
                         </div>
                     </div>
-
-                    <!-- Formasi Tersedia -->
                     <div
-                        class="bg-white rounded-lg border border-slate-200 p-6 md:p-8 shadow-sm"
+                        class="bg-white rounded-b-lg border border-slate-200 p-6 md:p-8 shadow-sm"
                     >
                         <h2
                             class="text-base font-extrabold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-4"
                         >
                             <div
-                                class="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center text-emerald-600"
+                                class="w-7 h-7 rounded-md bg-emerald-100 flex items-center justify-center text-emerald-600"
                             >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             </div>
                             Formasi Tersedia
                         </h2>
@@ -419,26 +407,59 @@
                                 <p class="text-xs text-slate-500 font-normal">Belum ada formasi.</p>
                             </div>
                         @else
-                            <ul class="space-y-3">
-                                @foreach ($jabatans as $jabatan)
-                                    <li
-                                        class="flex items-center p-3 bg-slate-50 rounded-md border border-slate-200 hover:border-emerald-400 hover:bg-white transition-colors"
+                            @php
+                                $jabatanBerdasarkanPosisi = $jabatans->groupBy(
+                                    fn($jabatan) => filled($jabatan->nama_posisi) &&
+                                    $jabatan->nama_posisi !== '-'
+                                        ? $jabatan->nama_posisi
+                                        : 'Posisi Lainnya',
+                                );
+                            @endphp
+                            <div class="space-y-3">
+                                @foreach ($jabatanBerdasarkanPosisi as $namaPosisi => $daftarJabatan)
+                                    <section
+                                        class="overflow-hidden rounded-lg border border-slate-200 bg-white"
                                     >
                                         <div
-                                            class="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 mr-3"
+                                            class="flex items-center gap-1 border-b border-slate-100 bg-emerald-50 px-3.5 py-1.5"
                                         >
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"></path>
-                                            </svg>
+                                            <div
+                                                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-emerald-700"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <h3
+                                                    class="line-clamp-2 text-xs font-extrabold text-slate-800 leading-snug"
+                                                    title="{{ $namaPosisi }}"
+                                                >
+                                                    {{ $namaPosisi }}
+                                                </h3>
+                                            </div>
                                         </div>
-                                        <p class="text-xs font-bold text-slate-700">
-                                            {{ $jabatan->nama_jabatan }}
-                                        </p>
-                                    </li>
+                                        <ul class="space-y-1.5 p-1.5">
+                                            @foreach ($daftarJabatan as $jabatan)
+                                                <li
+                                                    class="flex items-center gap-2.5 rounded-md border border-transparent bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-200"
+                                                >
+                                                    <span
+                                                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                    ></span>
+                                                    <span
+                                                        >{{ $jabatan->nama_jabatan }}</span
+                                                    >
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </section>
                                 @endforeach
-                            </ul>
+                            </div>
                         @endif
                     </div>
+
+                    <!-- Formasi Tersedia -->
                 </div>
             </div>
         </div>

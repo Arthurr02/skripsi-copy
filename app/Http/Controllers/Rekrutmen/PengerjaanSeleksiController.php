@@ -3,133 +3,135 @@
 namespace App\Http\Controllers\Rekrutmen;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
+use App\Models\Jabatan;
+use App\Models\Panitia;
+use App\Models\Pendaftaran;
+use App\Models\PengumpulanTugas;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
-use App\Models\Jabatan;
-use App\Models\Pendaftaran;
-use App\Models\Panitia;
+use App\Models\Tugas;
+use App\Services\Recruitment\SimpleXlsxExport;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class PengerjaanSeleksiController extends Controller
 {
-    // =================================================================
-    // 1. FUNGSI UNTUK MENAMPILKAN HALAMAN PILIH JABATAN / POSISI
-    // Akses: /organisasi/rekrutmen/seleksi
-    // =================================================================
-    public function index(Request $request)
+    public function index()
     {
-        // Cek Identitas Login Organisasi
-        if (Auth::guard('organisasi')->check()) {
-            $organisasiId = Auth::guard('organisasi')->id();
-        } else {
-            $nimPanitia = Auth::user()->nim;
-            $kepanitiaan = Panitia::where('nim', $nimPanitia)
-                ->where('panitia_rekrutmen', 1)
-                ->latest()
-                ->first();
+        ['organisasiId' => $organisasiId, 'routePrefix' => $routePrefix] = $this->konteksAkses();
 
-            if (!$kepanitiaan) {
-                abort(403, 'Anda tidak terdaftar sebagai panitia aktif.');
-            }
-            $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
-            $organisasiId = $periodePanitia->organisasi_id;
-        }
-
-        // Ambil periode aktif
         $periodeAktif = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
-            ->where('status_aktif', 1) // Pastikan kolom ini sesuai dengan database Anda (1 atau 'Aktif')
+            ->whereIn('status_aktif', [1, 2])
             ->latest()
             ->first();
 
-        // Ambil daftar jabatan (posisi) untuk dipilih panitia
+        $tahapans = collect();
         $listJabatan = collect();
         if ($periodeAktif) {
-            $listJabatan = Jabatan::withCount(['pendaftaran1', 'pendaftaran2'])
+            $now = Carbon::now();
+
+            $tahapans = Tahapan::query()
                 ->where('periode_rekrutmen_id', $periodeAktif->id)
+                ->withCount('tugas')
+                ->orderBy('urutan_tahapan')
+                ->orderBy('waktu_mulai')
+                ->get()
+                ->map(function (Tahapan $tahapan) use ($now) {
+                    $tahapan->parsed_mulai = Carbon::parse($tahapan->waktu_mulai);
+                    $tahapan->parsed_berakhir = Carbon::parse($tahapan->waktu_berakhir);
+                    $tahapan->is_past = $now->gt($tahapan->parsed_berakhir);
+                    $tahapan->is_active = $now->between(
+                        $tahapan->parsed_mulai,
+                        $tahapan->parsed_berakhir,
+                    );
+                    $tahapan->is_future = $now->lt($tahapan->parsed_mulai);
+                    $tahapan->is_waktu_tunggal = $tahapan->parsed_mulai->equalTo(
+                        $tahapan->parsed_berakhir,
+                    );
+
+                    $lampiran = is_array($tahapan->lampiran_tahapan)
+                        ? $tahapan->lampiran_tahapan
+                        : (json_decode($tahapan->lampiran_tahapan ?? '[]', true) ?: []);
+                    $tahapan->pedoman_path = $lampiran[0] ?? null;
+
+                    return $tahapan;
+                });
+
+            $listJabatan = Jabatan::query()
+                ->where('periode_rekrutmen_id', $periodeAktif->id)
+                ->withCount([
+                    'pendaftaranPilihanPertama as pendaftaran1_count',
+                    'pendaftaranPilihanKedua as pendaftaran2_count',
+                ])
+                ->orderBy('nama_posisi')
+                ->orderBy('nama_jabatan')
                 ->get();
         }
 
-        return view('rekrutmen.seleksi.daftar-posisi', compact('periodeAktif', 'listJabatan'));
+        return view('rekrutmen.seleksi.daftar-tahapan', [
+            'periodeAktif' => $periodeAktif,
+            'tahapans' => $tahapans,
+            'listJabatan' => $listJabatan,
+            'routePrefix' => $routePrefix,
+        ]);
     }
 
-    // =================================================================
-    // FUNGSI UNTUK MENU PENGERJAAN SELEKSI BERDASARKAN JABATAN
-    // Rute yang disarankan: Route::get('/seleksi/jabatan/{jabatan_id}', ... )
-    // =================================================================
-    public function tahapanJabatan(Request $request, $jabatan_id)
+    public function tahapanJabatan(int $jabatanId)
     {
-        // 🌟 1. CEK IDENTITAS LOGIN: Organisasi atau Panitia?
-        if (Auth::guard('organisasi')->check()) {
-            $organisasiId = Auth::guard('organisasi')->id();
-        } else {
-            $nimPanitia = Auth::user()->nim;
-            $kepanitiaan = Panitia::where('nim', $nimPanitia)
-                ->where('panitia_rekrutmen', 1)
-                ->latest()
-                ->first();
+        ['organisasiId' => $organisasiId, 'routePrefix' => $routePrefix] = $this->konteksAkses();
 
-            if (!$kepanitiaan) {
-                abort(403, 'Anda tidak terdaftar sebagai panitia aktif.');
-            }
-            $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
-            $organisasiId = $periodePanitia->organisasi_id;
-        }
-
-        // 🌟 2. AMBIL DATA JABATAN & PERIODE
-        $jabatan = Jabatan::with('periode')->findOrFail($jabatan_id);
+        $jabatan = Jabatan::with('periode')->findOrFail($jabatanId);
         $periodeAktif = $jabatan->periode;
 
-        // Validasi keamanan (Opsional: pastikan jabatan ini milik organisasi yang sedang login)
-        if ($periodeAktif->organisasi_id != $organisasiId) {
+        if (! $periodeAktif || $periodeAktif->organisasi_id !== $organisasiId) {
             abort(403, 'Akses ditolak.');
         }
 
         $now = Carbon::now();
 
-        // 🌟 3. AMBIL DATA PELAMAR UNTUK JABATAN INI
         $pendaftarans = Pendaftaran::with(['mahasiswa:nim,nama_lengkap'])
-            ->where('periode_rekrutmen_id', $periodeAktif->id)
-            ->where(function ($q) use ($jabatan_id) {
-                $q->where('jabatan_1_id', $jabatan_id)
-                    ->orWhere('jabatan_2_id', $jabatan_id);
+            ->where(function ($query) use ($jabatanId) {
+                $query->where('jabatan_1_id', $jabatanId)
+                    ->orWhere('jabatan_2_id', $jabatanId);
             })
             ->get();
 
         $totalPelamar = $pendaftarans->count();
+        $pendaftaranIds = $pendaftarans->pluck('id');
 
-        // 🌟 4. AMBIL TAHAPAN & TUGAS, LALU RAKIT DATA UNTUK VIEW & MODAL ALPINE.JS
-        $tahapans = Tahapan::with(['tugas.pengumpulanTugas'])
+        $tahapans = Tahapan::with([
+            'tugas' => fn ($query) => $query->where('jabatan_id', $jabatanId)->with([
+                'pengumpulanTugas' => fn ($query) => $query->whereIn('pendaftaran_id', $pendaftaranIds),
+            ]),
+        ])
             ->where('periode_rekrutmen_id', $periodeAktif->id)
             ->orderBy('urutan_tahapan', 'asc')
             ->get()
             ->map(function ($tahapan) use ($now, $pendaftarans) {
-                // Formatting Waktu (Sesuai kebutuhan View)
                 $tahapan->parsed_mulai = Carbon::parse($tahapan->waktu_mulai);
                 $tahapan->parsed_berakhir = Carbon::parse($tahapan->waktu_berakhir);
 
                 $tahapan->is_past = $now->gt($tahapan->parsed_berakhir);
                 $tahapan->is_future = $now->lt($tahapan->parsed_mulai);
                 $tahapan->is_active = $now->between($tahapan->parsed_mulai, $tahapan->parsed_berakhir);
-                $tahapan->is_waktu_tunggal = $tahapan->parsed_mulai->isSameDay($tahapan->parsed_berakhir);
+                $tahapan->is_waktu_tunggal = $tahapan->parsed_mulai->equalTo($tahapan->parsed_berakhir);
 
-                // Memetakan Tugas dan Menginjeksi Data Jawaban Peserta
-                $tahapan->tugas->map(function ($tugas) use ($pendaftarans) {
+                $tahapan->tugas->each(function ($tugas) use ($pendaftarans) {
                     $pesertaJawaban = [];
                     $jumlahPengumpul = 0;
 
                     foreach ($pendaftarans as $pendaftaran) {
-                        // Cek apakah pendaftar ini sudah mengumpulkan tugas ini
                         $pengumpulan = $tugas->pengumpulanTugas->where('pendaftaran_id', $pendaftaran->id)->first();
-                        $sudahKumpul = $pengumpulan ? true : false;
+                        $sudahKumpul = $pengumpulan !== null;
 
                         if ($sudahKumpul) {
                             $jumlahPengumpul++;
                         }
 
-                        // Format array json untuk dibaca Alpine.js di Modal View
                         $pesertaJawaban[] = [
                             'id' => $pendaftaran->id,
                             'nama' => $pendaftaran->mahasiswa->nama_lengkap ?? 'Peserta Anonim',
@@ -137,23 +139,443 @@ class PengerjaanSeleksiController extends Controller
                         ];
                     }
 
-                    // Tempelkan data ke dalam objek $tugas
                     $tugas->jumlah_pengumpul = $jumlahPengumpul;
                     $tugas->peserta_jawaban = $pesertaJawaban;
-
-                    return $tugas;
                 });
 
                 return $tahapan;
             });
 
-        // 🌟 5. LEMPAR SEMUA DATA KE VIEW
         return view('rekrutmen.seleksi.index', [
             'jabatan' => $jabatan,
             'namaRekrutmen' => $periodeAktif->nama_rekrutmen,
             'namaJabatan' => $jabatan->nama_jabatan,
             'totalPelamar' => $totalPelamar,
-            'tahapans' => $tahapans
+            'tahapans' => $tahapans,
+            'routePrefix' => $routePrefix,
         ]);
+    }
+
+    /** Menampilkan jawaban seluruh peserta untuk satu tahapan dan satu jabatan. */
+    public function jawabanTahapanJabatan(int $tahapanId, int $jabatanId)
+    {
+        ['tahapan' => $tahapan, 'jabatan' => $jabatan, 'routePrefix' => $routePrefix] = $this->konteksTahapanJabatan(
+            $tahapanId,
+            $jabatanId,
+        );
+
+        $pendaftarans = $this->pendaftaransUntukJabatan($jabatan);
+
+        $tugasDenganJawaban = $tahapan->tugas()
+            ->where('jabatan_id', $jabatan->id)
+            ->orderBy('id')
+            ->get()
+            ->map(function (Tugas $tugas) use ($pendaftarans) {
+                $tugas->jawaban_peserta = $this->jawabanPesertaUntukTugas($tugas, $pendaftarans);
+                $tugas->memakai_form = $this->memakaiForm($tugas);
+
+                return $tugas;
+            });
+
+        return view('rekrutmen.seleksi.jawaban-peserta', compact('tahapan', 'jabatan', 'tugasDenganJawaban', 'routePrefix'));
+    }
+
+    /** Menyimpan keputusan seleksi peserta dari tabel tahapan. */
+    public function simpanKeputusan(Request $request, int $tahapanId, int $jabatanId, int $pendaftaranId)
+    {
+        ['tahapan' => $tahapan, 'jabatan' => $jabatan] = $this->konteksTahapanJabatan($tahapanId, $jabatanId);
+        $pendaftaran = $this->pendaftaranUntukJabatan($pendaftaranId, $jabatan);
+        $data = $request->validate([
+            'keputusan' => ['required', Rule::in(['lulus', 'tidak_lolos'])],
+        ]);
+
+        $pendaftaran->status_seleksi = $data['keputusan'] === 'lulus'
+            ? 'Lulus Tahap '.$tahapan->urutan_tahapan
+            : 'Tidak Lolos';
+        $pendaftaran->save();
+
+        return back()->with('success', 'Keputusan seleksi untuk '.$pendaftaran->mahasiswa?->nama_lengkap.' berhasil disimpan.');
+    }
+
+    /** Mengunduh jawaban form atau wawancara dalam format XLSX. */
+    public function exportJawabanExcel(int $tahapanId, int $jabatanId, int $tugasId, SimpleXlsxExport $xlsxExport)
+    {
+        ['tahapan' => $tahapan, 'jabatan' => $jabatan] = $this->konteksTahapanJabatan($tahapanId, $jabatanId);
+        $tugas = $this->tugasUntukTahapanJabatan($tugasId, $tahapan, $jabatan);
+        abort_unless($this->memakaiForm($tugas), Response::HTTP_NOT_FOUND, 'Ekspor Excel hanya tersedia untuk penugasan form atau wawancara.');
+
+        $pertanyaan = $this->pertanyaanTugas($tugas);
+        $peserta = $this->jawabanPesertaUntukTugas($tugas, $this->pendaftaransUntukJabatan($jabatan));
+        $headers = array_merge(
+            ['NIM', 'Nama', 'Waktu Pengumpulan', 'Status Pengumpulan', 'Keputusan Seleksi'],
+            array_column($pertanyaan, 'label'),
+        );
+
+        $rows = $peserta->map(function (array $peserta) use ($pertanyaan) {
+            $jawabanPerKunci = collect($peserta['jawaban']['isi'] ?? [])->keyBy('key');
+            $jawabanForm = array_map(function (array $kolom) use ($jawabanPerKunci) {
+                return $this->nilaiUntukEkspor($jawabanPerKunci->get($kolom['key'])['nilai'] ?? null);
+            }, $pertanyaan);
+
+            return array_merge([
+                $peserta['nim'],
+                $peserta['nama'],
+                $peserta['dikumpulkan_pada'],
+                $peserta['jawaban']['status'],
+                $peserta['status_seleksi'],
+            ], $jawabanForm);
+        })->all();
+
+        $xlsx = $xlsxExport->buat($headers, $rows, [2]);
+        $fileName = 'hasil-'.str($tahapan->nama_tahapan.'-'.$jabatan->nama_jabatan)->slug('-').'.xlsx';
+
+        return response($xlsx, Response::HTTP_OK, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            'Content-Length' => (string) strlen($xlsx),
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    /** Menampilkan formulir catatan pewawancara untuk satu peserta. */
+    public function formWawancara(int $tahapanId, int $jabatanId, int $tugasId, int $pendaftaranId)
+    {
+        ['tahapan' => $tahapan, 'jabatan' => $jabatan, 'routePrefix' => $routePrefix] = $this->konteksTahapanJabatan(
+            $tahapanId,
+            $jabatanId,
+        );
+        $tugas = $this->tugasUntukTahapanJabatan($tugasId, $tahapan, $jabatan);
+        abort_unless($tugas->tipe_tugas === 'wawancara', Response::HTTP_NOT_FOUND, 'Tugas ini bukan sesi wawancara.');
+
+        $pendaftaran = $this->pendaftaranUntukJabatan($pendaftaranId, $jabatan);
+        $pengumpulan = PengumpulanTugas::query()
+            ->where('tugas_id', $tugas->id)
+            ->where('pendaftaran_id', $pendaftaran->id)
+            ->latest('updated_at')
+            ->first();
+        $dataPengumpulan = (array) ($pengumpulan?->lampiran_jawaban ?? []);
+        $jawabanSebelumnya = (array) ($dataPengumpulan['jawaban_wawancara']['form'] ?? []);
+        $pertanyaan = $this->pertanyaanTugas($tugas);
+
+        return view('rekrutmen.seleksi.form-wawancara', compact(
+            'tahapan',
+            'jabatan',
+            'tugas',
+            'pendaftaran',
+            'pertanyaan',
+            'jawabanSebelumnya',
+            'routePrefix',
+        ));
+    }
+
+    /** Menyimpan jawaban pewawancara tanpa menimpa konfirmasi kehadiran peserta. */
+    public function simpanWawancara(Request $request, int $tahapanId, int $jabatanId, int $tugasId, int $pendaftaranId)
+    {
+        ['tahapan' => $tahapan, 'jabatan' => $jabatan, 'routePrefix' => $routePrefix] = $this->konteksTahapanJabatan(
+            $tahapanId,
+            $jabatanId,
+        );
+        $tugas = $this->tugasUntukTahapanJabatan($tugasId, $tahapan, $jabatan);
+        abort_unless($tugas->tipe_tugas === 'wawancara', Response::HTTP_NOT_FOUND, 'Tugas ini bukan sesi wawancara.');
+
+        $pendaftaran = $this->pendaftaranUntukJabatan($pendaftaranId, $jabatan);
+        $pertanyaan = $this->pertanyaanTugas($tugas);
+        $jawaban = $this->validasiJawabanWawancara($request, $pertanyaan);
+        $pengumpulan = PengumpulanTugas::query()
+            ->where('tugas_id', $tugas->id)
+            ->where('pendaftaran_id', $pendaftaran->id)
+            ->latest('updated_at')
+            ->first() ?? new PengumpulanTugas([
+                'tugas_id' => $tugas->id,
+                'pendaftaran_id' => $pendaftaran->id,
+            ]);
+        $dataPengumpulan = (array) ($pengumpulan->lampiran_jawaban ?? []);
+        $dataPengumpulan['jawaban_wawancara'] = [
+            'form' => $jawaban,
+            'dikerjakan_pada' => now()->toDateTimeString(),
+        ];
+        $pengumpulan->lampiran_jawaban = $dataPengumpulan;
+        $pengumpulan->pewawancara_id = $this->idPewawancara($jabatan);
+        $pengumpulan->save();
+
+        return redirect()->route($routePrefix.'rekrutmen.seleksi.jawaban', [
+            'tahapanId' => $tahapan->id,
+            'jabatanId' => $jabatan->id,
+        ])->with('success', 'Catatan wawancara peserta berhasil disimpan.');
+    }
+
+    /**
+     * @return array{organisasiId: int, routePrefix: string, tahapan: Tahapan, jabatan: Jabatan}
+     */
+    private function konteksTahapanJabatan(int $tahapanId, int $jabatanId): array
+    {
+        ['organisasiId' => $organisasiId, 'routePrefix' => $routePrefix] = $this->konteksAkses();
+
+        $jabatan = Jabatan::with('periode')->findOrFail($jabatanId);
+        $tahapan = Tahapan::findOrFail($tahapanId);
+
+        abort_unless(
+            $jabatan->periode &&
+            $jabatan->periode->organisasi_id === $organisasiId &&
+            $tahapan->periode_rekrutmen_id === $jabatan->periode_rekrutmen_id,
+            Response::HTTP_FORBIDDEN,
+            'Tahapan atau jabatan tidak berada pada rekrutmen Anda.'
+        );
+
+        return compact('organisasiId', 'routePrefix', 'tahapan', 'jabatan');
+    }
+
+    private function tugasUntukTahapanJabatan(int $tugasId, Tahapan $tahapan, Jabatan $jabatan): Tugas
+    {
+        return Tugas::query()
+            ->whereKey($tugasId)
+            ->where('tahapan_id', $tahapan->id)
+            ->where('jabatan_id', $jabatan->id)
+            ->firstOrFail();
+    }
+
+    /** @return Collection<int, Pendaftaran> */
+    private function pendaftaransUntukJabatan(Jabatan $jabatan): Collection
+    {
+        return Pendaftaran::with('mahasiswa:nim,nama_lengkap')
+            ->where(fn ($query) => $query->where('jabatan_1_id', $jabatan->id)->orWhere('jabatan_2_id', $jabatan->id))
+            ->get();
+    }
+
+    private function pendaftaranUntukJabatan(int $pendaftaranId, Jabatan $jabatan): Pendaftaran
+    {
+        return Pendaftaran::with('mahasiswa:nim,nama_lengkap')
+            ->whereKey($pendaftaranId)
+            ->where(fn ($query) => $query->where('jabatan_1_id', $jabatan->id)->orWhere('jabatan_2_id', $jabatan->id))
+            ->firstOrFail();
+    }
+
+    /** @return Collection<int, array<string, mixed>> */
+    private function jawabanPesertaUntukTugas(Tugas $tugas, Collection $pendaftarans): Collection
+    {
+        $pengumpulanPeserta = PengumpulanTugas::query()
+            ->where('tugas_id', $tugas->id)
+            ->whereIn('pendaftaran_id', $pendaftarans->pluck('id'))
+            ->latest('updated_at')
+            ->get()
+            ->unique('pendaftaran_id')
+            ->keyBy('pendaftaran_id');
+
+        return $pendaftarans->map(function (Pendaftaran $pendaftaran) use ($pengumpulanPeserta, $tugas) {
+            $pengumpulan = $pengumpulanPeserta->get($pendaftaran->id);
+
+            return [
+                'pendaftaran_id' => $pendaftaran->id,
+                'nama' => $pendaftaran->mahasiswa?->nama_lengkap ?? 'Peserta',
+                'nim' => $pendaftaran->nim,
+                'dikumpulkan_pada' => $pengumpulan?->updated_at,
+                'status_seleksi' => $pendaftaran->status_seleksi ?: 'Menunggu Seleksi',
+                'jawaban' => $this->ringkasJawaban($pengumpulan, $tugas),
+            ];
+        })
+            ->sortByDesc(fn (array $peserta) => $peserta['dikumpulkan_pada']?->getTimestamp() ?? 0)
+            ->values();
+    }
+
+    private function memakaiForm(Tugas $tugas): bool
+    {
+        return $tugas->tipe_tugas === 'wawancara'
+            || $tugas->tipe_tugas === 'pengisian_form'
+            || $tugas->tipe_jawaban_tugas === 'form';
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, tipe: string, options: array<int, string>, required: bool, keterangan: string, kandidat_kunci: array<int, string>}>
+     */
+    private function pertanyaanTugas(Tugas $tugas): array
+    {
+        $lampiran = is_array($tugas->lampiran_tugas)
+            ? $tugas->lampiran_tugas
+            : (json_decode($tugas->lampiran_tugas ?? '[]', true) ?: []);
+        $schema = (array) ($lampiran['form'] ?? []);
+        $jumlahLabel = [];
+
+        return collect($schema)
+            ->filter(fn ($field) => is_array($field))
+            ->values()
+            ->map(function (array $field, int $indeks) use (&$jumlahLabel) {
+                $labelDasar = trim((string) ($field['label'] ?? '')) ?: 'Pertanyaan '.($indeks + 1);
+                $jumlahLabel[$labelDasar] = ($jumlahLabel[$labelDasar] ?? 0) + 1;
+                $label = $jumlahLabel[$labelDasar] === 1
+                    ? $labelDasar
+                    : $labelDasar.' ('.$jumlahLabel[$labelDasar].')';
+                $key = (string) ($field['id'] ?? $field['name'] ?? 'isian_'.$indeks);
+
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'tipe' => (string) ($field['tipe'] ?? 'text_long'),
+                    'options' => array_values(array_filter((array) ($field['options'] ?? []), fn ($option) => filled($option))),
+                    'required' => (bool) ($field['required'] ?? false),
+                    'keterangan' => trim((string) ($field['keterangan'] ?? '')),
+                    'kandidat_kunci' => array_values(array_unique(array_filter([
+                        $field['id'] ?? null,
+                        $field['name'] ?? null,
+                        'isian_'.$indeks,
+                        'field_'.$indeks,
+                        $labelDasar,
+                        str($labelDasar)->slug('_')->toString(),
+                    ], fn ($kunci) => filled($kunci)))),
+                ];
+            })
+            ->all();
+    }
+
+    /** @return array<int, array{key: string, label: string, nilai: mixed, tipe: string}> */
+    private function formatJawabanForm(array $jawaban, Tugas $tugas): array
+    {
+        $pertanyaan = $this->pertanyaanTugas($tugas);
+
+        if ($pertanyaan === []) {
+            return collect($jawaban)->map(fn ($nilai, $label) => [
+                'key' => (string) $label,
+                'label' => str_replace('_', ' ', (string) $label),
+                'nilai' => $nilai,
+                'tipe' => 'text_long',
+            ])->values()->all();
+        }
+
+        return collect($pertanyaan)->map(function (array $pertanyaan) use ($jawaban) {
+            $nilai = null;
+            foreach ($pertanyaan['kandidat_kunci'] as $kunci) {
+                if (array_key_exists($kunci, $jawaban)) {
+                    $nilai = $jawaban[$kunci];
+                    break;
+                }
+            }
+
+            return [
+                'key' => $pertanyaan['key'],
+                'label' => $pertanyaan['label'],
+                'nilai' => $nilai,
+                'tipe' => $pertanyaan['tipe'],
+            ];
+        })->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function validasiJawabanWawancara(Request $request, array $pertanyaan): array
+    {
+        $aturan = [];
+
+        foreach ($pertanyaan as $pertanyaanItem) {
+            $nama = 'jawaban.'.$pertanyaanItem['key'];
+            $aturanBidang = [$pertanyaanItem['required'] ? 'required' : 'nullable'];
+
+            if ($pertanyaanItem['tipe'] === 'checkbox') {
+                $aturan[$nama] = [...$aturanBidang, 'array'];
+                $aturan[$nama.'.*'] = ['string', 'max:1000'];
+
+                continue;
+            }
+
+            $aturanBidang[] = match ($pertanyaanItem['tipe']) {
+                'email' => 'email',
+                'number' => 'numeric',
+                'date' => 'date',
+                default => 'string',
+            };
+            $aturanBidang[] = 'max:5000';
+
+            if (in_array($pertanyaanItem['tipe'], ['select', 'radio'], true) && $pertanyaanItem['options'] !== []) {
+                $aturanBidang[] = Rule::in($pertanyaanItem['options']);
+            }
+
+            $aturan[$nama] = $aturanBidang;
+        }
+
+        $tervalidasi = $request->validate($aturan);
+        $jawaban = [];
+
+        foreach ($pertanyaan as $pertanyaanItem) {
+            $jawaban[$pertanyaanItem['key']] = $tervalidasi['jawaban'][$pertanyaanItem['key']] ?? null;
+        }
+
+        return $jawaban;
+    }
+
+    private function idPewawancara(Jabatan $jabatan): ?int
+    {
+        if (Auth::guard('organisasi')->check()) {
+            return null;
+        }
+
+        return Panitia::query()
+            ->where('nim', Auth::user()->nim)
+            ->where('periode_rekrutmen_id', $jabatan->periode_rekrutmen_id)
+            ->latest()
+            ->value('id');
+    }
+
+    private function nilaiUntukEkspor(mixed $nilai): string
+    {
+        if (is_array($nilai)) {
+            return collect($nilai)->map(fn ($item) => $this->nilaiUntukEkspor($item))->implode(', ');
+        }
+
+        if (is_string($nilai) && str_starts_with($nilai, 'rekrutmen/')) {
+            return asset('storage/'.$nilai);
+        }
+
+        return is_scalar($nilai) ? (string) $nilai : '';
+    }
+
+    private function konteksAkses(): array
+    {
+        if (Auth::guard('organisasi')->check()) {
+            return ['organisasiId' => Auth::guard('organisasi')->id(), 'routePrefix' => 'organisasi.'];
+        }
+
+        $kepanitiaan = Panitia::where('nim', Auth::user()->nim)->latest()->first();
+        abort_unless($kepanitiaan, Response::HTTP_FORBIDDEN, 'Anda tidak terdaftar sebagai panitia.');
+
+        $periode = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+        abort_unless($periode, Response::HTTP_FORBIDDEN, 'Periode rekrutmen panitia tidak ditemukan.');
+
+        return ['organisasiId' => $periode->organisasi_id, 'routePrefix' => 'panitia.'];
+    }
+
+    private function ringkasJawaban(?PengumpulanTugas $pengumpulan, Tugas $tugas): array
+    {
+        if (! $pengumpulan) {
+            return ['status' => 'Belum dikumpulkan', 'jenis' => 'kosong', 'isi' => []];
+        }
+
+        $data = is_array($pengumpulan->lampiran_jawaban) ? $pengumpulan->lampiran_jawaban : (json_decode($pengumpulan->lampiran_jawaban ?? '[]', true) ?: []);
+
+        if ($tugas->tipe_tugas === 'wawancara') {
+            $jawabanWawancara = (array) ($data['jawaban_wawancara']['form'] ?? []);
+            $sudahWawancara = array_key_exists('jawaban_wawancara', $data);
+            $status = $sudahWawancara
+                ? 'Wawancara selesai'
+                : (! empty($data['kehadiran']) || ! empty($data['status_wawancara'])
+                    ? 'Hadir dikonfirmasi'
+                    : 'Menunggu wawancara');
+
+            return [
+                'status' => $status,
+                'jenis' => 'wawancara',
+                'isi' => $this->formatJawabanForm($jawabanWawancara, $tugas),
+            ];
+        }
+
+        if (! empty($data['berkas'])) {
+            return ['status' => 'Terkirim', 'jenis' => 'berkas', 'isi' => (array) $data['berkas']];
+        }
+
+        if ($this->memakaiForm($tugas)) {
+            return [
+                'status' => 'Terkirim',
+                'jenis' => 'form',
+                'isi' => $this->formatJawabanForm((array) ($data['form'] ?? $data), $tugas),
+            ];
+        }
+
+        return ['status' => 'Terkirim', 'jenis' => 'lainnya', 'isi' => []];
     }
 }

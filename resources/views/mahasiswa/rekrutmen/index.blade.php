@@ -1,34 +1,35 @@
 <x-app-layout>
     <!-- Background Aksen Atas -->
     <div
-        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10 bg-slate-50"
+        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10"
     >
         <div
             class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6bTIwIDIwaDIwdjIwSDIwaC0yMHptMCAwaC0yMHYtMjBoMjB2MjB6IiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iI2YxZjVmOSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')] opacity-60"
         ></div>
         <div
-            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-200/80 to-blue-50/20 blur-[100px]"
+            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-300/80 to-blue-50/20 blur-[100px]"
         ></div>
         <div
             class="absolute top-[10%] right-[10%] w-[35%] h-[50%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10 pb-24">
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HEADER SELARAS -->
         <div
-            class="mb-8 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6"
+            class="mb-8 border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4"
         >
             <div>
                 <h2
-                    class="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight mb-2"
+                    class="text-3xl font-extrabold text-slate-800 tracking-tight"
                 >
                     Daftar Rekrutmen
                 </h2>
-                <p class="text-sm md:text-base text-slate-500 max-w-2xl leading-relaxed">Temukan dan ikuti rekrutmen kepanitiaan atau organisasi tingkat kampus yang sedang berlangsung saat ini.</p>
+                <p class="text-sm text-slate-500 mt-1">Temukan dan ikuti rekrutmen kepanitiaan atau organisasi tingkat kampus yang sedang berlangsung saat ini.</p>
             </div>
         </div>
-
         @if ($rekrutmenAktif->isEmpty())
             <!-- Kondisi Kosong (Empty State) -->
             <div
@@ -72,6 +73,7 @@
                             : $bannerData;
                         $bannerPath =
                             is_array($bannerArray) && count($bannerArray) > 0 ? $bannerArray[0] : null;
+                        $sudahTerdaftar = $periodeTerdaftar->has($rekrutmen->id);
                     @endphp
                     <div
                         class="group bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col hover:border-blue-500 transition-all duration-300 shadow-sm hover:shadow-md"
@@ -163,7 +165,11 @@
                                                 \Carbon\Carbon::parse($rekrutmen->created_at)->format(
                                                     'Y',
                                                 )
-                                    }}
+                                    }} (Periode
+                                    <span
+                                        class="text-blue-600"
+                                        >{{ $rekrutmen->tahun_periode }}</span
+                                    >)
                                 </h3>
 
                                 <!-- Deskripsi Ringkas (Max 2 Baris) -->
@@ -185,13 +191,24 @@
                                 >
                                     Detail Info
                                 </a>
-                                <a
-                                    href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
-                                    class="flex items-center justify-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
-                                >
-                                    Daftar
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                </a>
+                                @if ($sudahTerdaftar)
+                                    <button
+                                        type="button"
+                                        data-status-pendaftaran="sudah-terdaftar"
+                                        class="flex items-center justify-center py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
+                                    >
+                                        Terdaftar
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    </button>
+                                @else
+                                    <a
+                                        href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
+                                        class="flex items-center justify-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
+                                    >
+                                        Daftar
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -245,5 +262,17 @@
             },
         });
         @endif
+
+        document
+            .querySelectorAll('[data-status-pendaftaran="sudah-terdaftar"]')
+            .forEach(function (button) {
+                button.addEventListener('click', function () {
+                    premiumSwal.fire({
+                        icon: 'info',
+                        title: 'Pendaftaran Sudah Tercatat',
+                        text: 'Anda telah mendaftarkan diri pada rekrutmen ini.',
+                    });
+                });
+            });
     });
 </script>

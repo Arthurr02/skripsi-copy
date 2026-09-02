@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "format": "prettier --write \"resources/**/*.js\"",
+    "format": "prettier --write \"resources/**/*.{js,blade.php}\"",
+    "format:check": "prettier --check \"resources/**/*.{js,blade.php}\"",
     "build": "vite build",
     "dev": "vite"
   },

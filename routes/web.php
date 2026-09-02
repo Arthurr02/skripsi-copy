@@ -1,19 +1,15 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AuthController;
-
-use App\Http\Controllers\Rekrutmen\UpdateInformasiController;
-use App\Http\Controllers\Rekrutmen\PendaftarController;
-use App\Http\Controllers\Rekrutmen\PengerjaanSeleksiController;
-use App\Http\Controllers\Rekrutmen\RiwayatRekrutmenController;
-
-use App\Http\Controllers\Organisasi\BukaRekrutmenController;
-
 use App\Http\Controllers\Mahasiswa\DaftarRekrutmenController;
 use App\Http\Controllers\Mahasiswa\RekrutmenDiikutiController;
 use App\Http\Controllers\Mahasiswa\RiwayatPendaftaranController;
+use App\Http\Controllers\Organisasi\BukaRekrutmenController;
+use App\Http\Controllers\Rekrutmen\PendaftarController;
+use App\Http\Controllers\Rekrutmen\PengerjaanSeleksiController;
+use App\Http\Controllers\Rekrutmen\RiwayatRekrutmenController;
+use App\Http\Controllers\Rekrutmen\UpdateInformasiController;
+use Illuminate\Support\Facades\Route;
 
 // ==========================================
 // 1. HALAMAN DEPAN & AUTENTIKASI
@@ -25,7 +21,6 @@ Route::get('/', function () {
 Route::get('/auth/google/redirect', [AuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [AuthController::class, 'callback']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
 
 // ==========================================
 // 2. GRUP ORGANISASI INTI (DPM/BEM)
@@ -45,6 +40,11 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
 
         // 1. Halaman Pilih Posisi
         Route::get('/seleksi', [PengerjaanSeleksiController::class, 'index'])->name('seleksi');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}', [PengerjaanSeleksiController::class, 'jawabanTahapanJabatan'])->name('seleksi.jawaban');
+        Route::post('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/peserta/{pendaftaranId}/keputusan', [PengerjaanSeleksiController::class, 'simpanKeputusan'])->name('seleksi.keputusan');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/export', [PengerjaanSeleksiController::class, 'exportJawabanExcel'])->name('seleksi.export');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/peserta/{pendaftaranId}/wawancara', [PengerjaanSeleksiController::class, 'formWawancara'])->name('seleksi.wawancara');
+        Route::post('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/peserta/{pendaftaranId}/wawancara', [PengerjaanSeleksiController::class, 'simpanWawancara'])->name('seleksi.wawancara.store');
 
         // 2. Halaman Timeline Tugas (Tambahkan baris ini)
         Route::get('/seleksi/{jabatan_id}/tahapan', [PengerjaanSeleksiController::class, 'tahapanJabatan'])->name('seleksi.tahapan');
@@ -61,7 +61,6 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
     });
 });
 
-
 // ==========================================
 // 3. GRUP PANITIA (Anggota Organisasi)
 // ==========================================
@@ -69,16 +68,23 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
 
     Route::get('/dashboard', function () {
         $user = auth()->user();
+
         // $dataKepanitiaan = $user->keanggotaan->first();
         return view('panitia.dashboard', compact(
             'user',
-            //'dataKepanitiaan'
+            // 'dataKepanitiaan'
         ));
     })->name('dashboard');
 
     Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/pendaftar', [PendaftarController::class, 'index'])->name('pendaftar');
         Route::get('/seleksi', [PengerjaanSeleksiController::class, 'index'])->name('seleksi');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}', [PengerjaanSeleksiController::class, 'jawabanTahapanJabatan'])->name('seleksi.jawaban');
+        Route::post('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/peserta/{pendaftaranId}/keputusan', [PengerjaanSeleksiController::class, 'simpanKeputusan'])->name('seleksi.keputusan');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/export', [PengerjaanSeleksiController::class, 'exportJawabanExcel'])->name('seleksi.export');
+        Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/peserta/{pendaftaranId}/wawancara', [PengerjaanSeleksiController::class, 'formWawancara'])->name('seleksi.wawancara');
+        Route::post('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}/tugas/{tugasId}/peserta/{pendaftaranId}/wawancara', [PengerjaanSeleksiController::class, 'simpanWawancara'])->name('seleksi.wawancara.store');
+        Route::get('/seleksi/{jabatanId}/tahapan', [PengerjaanSeleksiController::class, 'tahapanJabatan'])->name('seleksi.tahapan');
         Route::get('/informasi/{periode_id?}', [UpdateInformasiController::class, 'index'])->name('update');
         Route::post('/informasi/{periode_id}', [UpdateInformasiController::class, 'store'])->name('store_update');
     });
@@ -90,7 +96,6 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
         Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}', [RiwayatRekrutmenController::class, 'showTahapan'])->name('tahapan');
     });
 });
-
 
 // ==========================================
 // 4. GRUP MAHASISWA BIASA (Pendaftar) - FIXED
@@ -125,7 +130,4 @@ Route::middleware('auth')->prefix('mahasiswa')->name('mahasiswa.')->group(functi
 
 });
 
-
-
-
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

@@ -11,7 +11,10 @@
                 !e.ctrlKey &&
                 !e.metaKey
             ) {
-                pageLoading = true;
+                // Jangan langsung aktifkan loading secara instan yang memblokir klik
+                setTimeout(() => {
+                    pageLoading = true;
+                }, 50); // Jeda sangat singkat (50 milidetik) agar klik pertama sukses memicu navigasi dulu
             }
         });
 

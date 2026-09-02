@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Pendaftaran;
+use Illuminate\Support\Facades\Auth;
 
 class RiwayatPendaftaranController extends Controller
 {
@@ -18,7 +18,7 @@ class RiwayatPendaftaranController extends Controller
         // Mengambil semua riwayat pendaftaran dengan relasi penuh
         $riwayatPendaftaran = Pendaftaran::with([
             'jabatan_1.periode.organisasi',
-            'jabatan_2'
+            'jabatan_2',
         ])
             ->where('nim', $user->nim)
             ->orderBy('created_at', 'desc')

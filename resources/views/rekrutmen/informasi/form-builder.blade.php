@@ -280,7 +280,7 @@
                                         type="button"
                                         @click="
                                             field.options = field.options || [];
-                                            field.options.push('Opsi Baru');
+                                            field.options.push('');
                                         "
                                         class="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md transition-colors mt-2 flex items-center gap-1 w-max"
                                     >
@@ -375,13 +375,15 @@
                             type="button"
                             @click="
                                 currentFormSchema.push({
+                                    id: 'pertanyaan_' + Date.now(),
+                                    name: 'isian_' + Date.now(),
                                     tipe: isWawancaraMode
                                         ? 'text_long'
                                         : 'text_short',
                                     label: '',
                                     keterangan: '',
                                     required: true,
-                                    options: ['Opsi 1'],
+                                    options: [''],
                                     allowed_formats: [],
                                 });
                                 setTimeout(() => {

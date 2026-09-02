@@ -1,29 +1,58 @@
 <x-app-layout>
-    <!-- Background Flat Gelap (DNA Desain Bawaan) -->
+    <!-- Background Aksen Atas (Mencegah scroll horizontal dengan inset-x-0) -->
     <div
-        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10 bg-slate-50"
+        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10"
     >
         <div
             class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6bTIwIDIwaDIwdjIwSDIwaC0yMHptMCAwaC0yMHYtMjBoMjB2MjB6IiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iI2YxZjVmOSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')] opacity-60"
         ></div>
         <div
-            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-200/80 to-blue-50/20 blur-[100px]"
+            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-300/80 to-blue-50/20 blur-[100px]"
+        ></div>
+        <div
+            class="absolute top-[10%] right-[10%] w-[35%] h-[50%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
         ></div>
     </div>
 
-    <div class="max-w-5xl mx-auto px-4 sm:px-8 relative z-10 pt-12 pb-24">
-        <!-- Header -->
-        <div class="mb-10 text-center md:text-left">
-            <span
-                class="text-blue-700 text-xs font-bold uppercase tracking-widest bg-blue-100 px-3 py-1 rounded-md"
-                >Manajemen Seleksi</span
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
+        <!-- HEADER SELARAS -->
+        <div
+            class="mb-8 pb-5 relative z-10 flex flex-col md:flex-row md:items-center justify-between"
+        >
+            <div>
+                <!-- Tipografi Solid Slate -->
+                <h2
+                    class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-800 mb-2.5 leading-tight"
+                >
+                    Pengerjaan Seleksi
+                </h2>
+
+                <p class="text-sm font-normal text-slate-500 leading-relaxed">Pilih jabatan di bawah ini untuk melihat dan mengelola tugas peserta pada tahapan seleksi.</p>
+            </div>
+
+            <!-- Info Periode -->
+            <div
+                class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 flex flex-col md:items-start justify-betweenring-1 ring-slate-900/5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
             >
-            <h1
-                class="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight leading-tight mt-4"
-            >
-                Pilih Posisi / Jabatan
-            </h1>
-            <p class="text-slate-500 text-sm mt-2 font-medium">Pilih jabatan di bawah ini untuk melihat dan mengelola tugas peserta pada tahapan seleksi.</p>
+                <!-- Kontainer Flex untuk Titik Biru dan Teks -->
+                <div class="flex items-center justify-center gap-2 mb-1.5">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
+                        ></span>
+                        <span
+                            class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
+                        ></span>
+                    </span>
+                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
+                </div>
+                <!-- Angka Tahun -->
+                <p class="text-2xl font-bold text-blue-600 tracking-tight">
+                    {{ $periodeAktif->tahun_periode }}
+                </p>
+            </div>
         </div>
 
         @if (!$periodeAktif)
@@ -64,7 +93,7 @@
                         </div>
 
                         <a
-                            href="{{ route('organisasi.rekrutmen.seleksi.tahapan', $jabatan->id) }}"
+                            href="{{ route($routePrefix . 'rekrutmen.seleksi.tahapan', $jabatan->id) }}"
                             class="w-full mt-4 flex items-center justify-between py-2.5 px-4 bg-slate-50 border border-slate-200 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-700 text-slate-600 text-xs font-bold rounded-lg transition-colors"
                         >
                             <span>Kelola Tahapan</span>

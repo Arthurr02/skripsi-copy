@@ -3,13 +3,11 @@
 namespace App\Http\Controllers\Rekrutmen;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
-use App\Models\PeriodeRekrutmen;
 use App\Models\Jabatan;
-use App\Models\Tahapan;
 use App\Models\Panitia;
+use App\Models\PeriodeRekrutmen;
+use App\Models\Tahapan;
+use Illuminate\Support\Facades\Auth;
 
 class RiwayatRekrutmenController extends Controller
 {
@@ -19,7 +17,7 @@ class RiwayatRekrutmenController extends Controller
         if (Auth::guard('organisasi')->check()) {
             return [
                 'organisasiId' => Auth::guard('organisasi')->id(),
-                'prefix' => 'organisasi.'
+                'prefix' => 'organisasi.',
             ];
         } else {
             $nimPanitia = Auth::user()->nim;
@@ -28,13 +26,15 @@ class RiwayatRekrutmenController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$kepanitiaan)
+            if (! $kepanitiaan) {
                 abort(403, 'Anda tidak memiliki akses arsip.');
+            }
 
             $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+
             return [
                 'organisasiId' => $periodePanitia->organisasi_id,
-                'prefix' => 'panitia.'
+                'prefix' => 'panitia.',
             ];
         }
     }

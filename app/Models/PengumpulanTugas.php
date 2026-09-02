@@ -24,5 +24,13 @@ class PengumpulanTugas extends Model
         'lampiran_jawaban' => 'array',
     ];
 
-    // (Bila ada fungsi relasi seperti belongsTo, biarkan saja di bawah sini)
+    public function tugas()
+    {
+        return $this->belongsTo(Tugas::class, 'tugas_id');
+    }
+
+    public function pendaftaran()
+    {
+        return $this->belongsTo(Pendaftaran::class, 'pendaftaran_id');
+    }
 }

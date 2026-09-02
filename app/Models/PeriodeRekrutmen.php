@@ -4,7 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // 🌟 WAJIB DITAMBAHKAN
+
+// 🌟 WAJIB DITAMBAHKAN
 
 class PeriodeRekrutmen extends Model
 {
@@ -22,5 +23,10 @@ class PeriodeRekrutmen extends Model
     public function organisasi()
     {
         return $this->belongsTo(Organisasi::class, 'organisasi_id', 'id');
+    }
+
+    public function jabatan()
+    {
+        return $this->hasMany(Jabatan::class, 'periode_rekrutmen_id');
     }
 }

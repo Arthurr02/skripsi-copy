@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Jabatan;
+use App\Models\Pendaftaran;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
-use App\Models\Pendaftaran;
-use App\Models\Jabatan;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SeleksiController extends Controller
 {
@@ -23,12 +23,12 @@ class SeleksiController extends Controller
             ->latest()
             ->first();
 
-        if (!$periodeAktif) {
+        if (! $periodeAktif) {
             return view('organisasi.seleksi.index', [
                 'listTahapan' => collect(),
                 'activeTahapan' => null,
                 'pesertaData' => collect(),
-                'listJabatan' => collect()
+                'listJabatan' => collect(),
             ]);
         }
 
@@ -47,6 +47,7 @@ class SeleksiController extends Controller
                 } else {
                     $tahapan->status_waktu = 'sedang_berjalan';
                 }
+
                 return $tahapan;
             });
 
@@ -55,7 +56,7 @@ class SeleksiController extends Controller
         $activeTahapan = $listTahapan->firstWhere('id', $activeTahapanId);
 
         // Jika tidak memilih atau id tidak valid, default ke tahapan yang 'sedang_berjalan', atau tahapan pertama
-        if (!$activeTahapan) {
+        if (! $activeTahapan) {
             $activeTahapan = $listTahapan->firstWhere('status_waktu', 'sedang_berjalan') ?? $listTahapan->first();
         }
 
@@ -74,7 +75,7 @@ class SeleksiController extends Controller
                     $q->whereHas('tugas', function ($tQ) use ($activeTahapan) {
                         $tQ->where('tahapan_id', $activeTahapan->id);
                     });
-                }
+                },
             ])->whereHas('pilihanJabatan1', function ($q) use ($periodeAktif) {
                 $q->where('periode_rekrutmen_id', $periodeAktif->id);
             });

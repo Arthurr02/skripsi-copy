@@ -14,7 +14,9 @@
         ></div>
     </div>
 
-    <div class="p-8 md:p-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HEADER SELARAS -->
         <div
             class="mb-8 pb-5 relative z-10 flex flex-col md:flex-row md:items-center justify-between"
@@ -48,7 +50,7 @@
                 </div>
                 <!-- Angka Tahun -->
                 <p class="text-2xl font-bold text-blue-600 tracking-tight">
-                    {{ $periodeAktif->tahun_periode }}
+                    {{ $periodeAktif?->tahun_periode ?? '-' }}
                 </p>
             </div>
         </div>
@@ -61,7 +63,7 @@
             <div class="bg-white border-slate-100">
                 <form
                     method="GET"
-                    action="{{ route('organisasi.rekrutmen.pendaftar') }}"
+                    action="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
                     class="flex flex-col gap-4"
                 >
                     <div class="flex flex-col md:flex-row gap-4 items-end">
@@ -170,7 +172,7 @@
                                     'pilihan_tipe'
                                 ]))
                                 <a
-                                    href="{{ route('organisasi.rekrutmen.pendaftar') }}"
+                                    href="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
                                     class="w-full md:w-max h-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold px-5 rounded-lg transition-colors border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5"
                                     title="Hapus semua filter"
                                 >
@@ -413,7 +415,7 @@
             </div>
 
             <!-- Navigasi Pagination -->
-            @if ($daftarPeserta->hasPages())
+            @if (method_exists($daftarPeserta, 'hasPages') && $daftarPeserta->hasPages())
                 <div class="p-4 border-t border-slate-100 bg-slate-50/80">
                     {{ $daftarPeserta->links() }}
                 </div>

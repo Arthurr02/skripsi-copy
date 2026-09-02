@@ -34,6 +34,7 @@
         }"
     >
         <!-- Background Flat Gelap (Diselaraskan 100% dengan Role Mahasiswa) -->
+
         <div
             class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10 bg-slate-50"
         >
@@ -53,7 +54,7 @@
             <nav class="mb-6">
                 <!-- Tombol kembali disesuaikan ke halaman daftar posisi -->
                 <a
-                    {{-- href="{{ route('organisasi.rekrutmen.posisi.index') }}" --}}
+                    href="{{ route($routePrefix . 'rekrutmen.seleksi') }}"
                     class="inline-flex items-center text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-colors bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 rounded-md shadow-sm"
                 >
                     <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>

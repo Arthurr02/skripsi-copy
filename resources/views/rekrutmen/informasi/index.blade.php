@@ -14,9 +14,11 @@
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 mt-6 sm:mt-10">
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HEADER SELARAS (Rounded-lg, Border Slate, Solid Background) -->
-        <div class="rounded-lg mb-8 relative overflow-hidden">
+        <div class="mb-8 relative overflow-hidden">
             <div
                 class="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-8"
             >
@@ -70,14 +72,14 @@
             $jabatanResult = [];
             if (old('nama_jabatan')) {
                 foreach (old('nama_jabatan') as $jName) {
-                    $jabatanResult[] = ['nama' => $jName];
+                    $jabatanResult[] = ['id' => null, 'nama' => $jName];
                 }
             } elseif (isset($jabatanData) && $jabatanData->isNotEmpty()) {
                 foreach ($jabatanData as $j) {
-                    $jabatanResult[] = ['nama' => $j->nama_jabatan];
+                    $jabatanResult[] = ['id' => $j->id, 'nama' => $j->nama_jabatan];
                 }
             } else {
-                $jabatanResult[] = ['nama' => ''];
+                $jabatanResult[] = ['id' => null, 'nama' => ''];
             }
 
             // 2. Siapkan Data Tahapan & Tugas Multi-Kondisi
@@ -88,6 +90,8 @@
                     if (isset($t['tugas'])) {
                         foreach ($t['tugas'] as $tug) {
                             $tugasList[] = [
+                                'id' => $tug['id'] ?? null,
+                                'jabatan_id' => $tug['jabatan_id'] ?? null,
                                 'nama_jabatan' => $tug['nama_jabatan'] ?? '',
                                 'deskripsi_tugas' => $tug['deskripsi_tugas'] ?? '',
                                 'tipe_jawaban_tugas' =>
@@ -105,6 +109,7 @@
                     }
 
                     $tahapanResult[] = [
+                        'id' => $t['id'] ?? null,
                         'nama_tahapan' => $t['nama_tahapan'] ?? '',
                         'deskripsi' => $t['deskripsi'] ?? '',
                         'tanggal_mulai' => $t['tanggal_mulai'] ?? '',
@@ -145,7 +150,9 @@
                             }
 
                             $tugasList[] = [
-                                'nama_jabatan' => $tug->nama_jabatan,
+                                'id' => $tug->id,
+                                'jabatan_id' => $tug->jabatan_id,
+                                'nama_jabatan' => $tug->jabatan?->nama_jabatan ?? '',
                                 'deskripsi_tugas' => $tug->deskripsi_tugas,
                                 'tipe_jawaban_tugas' => $tug->tipe_jawaban_tugas,
                                 'tipe_tugas' => $tug->tipe_tugas ?? 'pengisian_form',
@@ -191,6 +198,7 @@
                         $wMulai !== '' && $wSelesai !== '' && $wMulai !== $wSelesai;
 
                     $tahapanResult[] = [
+                        'id' => $t->id,
                         'nama_tahapan' => $t->nama_tahapan,
                         'deskripsi' => $t->deskripsi_tahapan ?? '',
                         'tanggal_mulai' => $wMulai,
@@ -224,7 +232,7 @@
         <div
             x-data="{
                 
-                tab: 1,
+                tab: Number(new URLSearchParams(window.location.search).get('tab')) === 3 ? 3 : 1,
                 errors: {},
                 openFormBuilder: false,
                 isWawancaraMode: false, 
@@ -247,17 +255,35 @@
                     // 2. Pantau perubahan pada struktur grup yang baru
                     this.$watch('listGroupPosisi', () => { this.autoSyncJabatan(); }, { deep: true });
                     this.autoSyncJabatan();
+
+                    const targetTahapanId = new URLSearchParams(window.location.search).get('tahapan_id');
+                    const targetTahapanIndex = this.listTahapan.findIndex(
+                        (tahapan) => String(tahapan.id) === String(targetTahapanId),
+                    );
+
+                    if (targetTahapanIndex >= 0) {
+                        this.activeTahapanIndex = targetTahapanIndex;
+                    }
+
+                    if (this.tab === 3) {
+                        this.$nextTick(() => {
+                            document.getElementById('tahapan-seleksi')?.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start',
+                            });
+                        });
+                    }
                 },
 
                 // 3. EMPAT FUNGSI KONTROL GRUP JABATAN
                 tambahPosisi() {
-                    this.listGroupPosisi.push({ posisi: '', jabatans: [{ nama: '' }] });
+                    this.listGroupPosisi.push({ posisi: '', jabatans: [{ id: null, nama: '' }] });
                 },
                 hapusPosisi(pIdx) {
                     this.listGroupPosisi.splice(pIdx, 1);
                 },
                 tambahJabatan(pIdx) {
-                    this.listGroupPosisi[pIdx].jabatans.push({ nama: '' });
+                    this.listGroupPosisi[pIdx].jabatans.push({ id: null, nama: '' });
                 },
                 hapusJabatan(pIdx, jIdx) {
                     this.listGroupPosisi[pIdx].jabatans.splice(jIdx, 1);
@@ -270,6 +296,7 @@
                     this.listGroupPosisi.forEach(group => {
                         group.jabatans.forEach(jab => {
                             flatJabatans.push({
+                                id: jab.id || null,
                                 posisi: group.posisi,
                                 nama: jab.nama
                             });
@@ -278,17 +305,28 @@
 
                     // Langkah B: Sinkronisasikan Flat Array ke dalam setiap Tahapan
                     this.listTahapan.forEach((tahapan) => {
-                        let syncedTugas = flatJabatans.map((jabatan, indexFlat) => {
-                            let existing = tahapan.tugasJabatan ? tahapan.tugasJabatan[indexFlat] : null;
+                        const existingByJobId = new Map(
+                            (tahapan.tugasJabatan || [])
+                                .filter(tugas => tugas.jabatan_id)
+                                .map(tugas => [String(tugas.jabatan_id), tugas])
+                        );
+
+                        let syncedTugas = flatJabatans.map((jabatan) => {
+                            let existing = jabatan.id
+                                ? existingByJobId.get(String(jabatan.id))
+                                : null;
                             
                             if (existing) {
                                 // Pertahankan data form/berkas lama, hanya update namanya
-                                existing.nama_jabatan = jabatan.nama; 
+                                existing.jabatan_id = jabatan.id;
+                                existing.nama_jabatan = jabatan.nama;
                                 return existing;
                             }
                             
                             // Buat wadah tugas baru jika jabatannya baru ditambah
                             return { 
+                                id: null,
+                                jabatan_id: jabatan.id,
                                 nama_jabatan: jabatan.nama, 
                                 deskripsi_tugas: '', 
                                 tipe_tugas: 'pengisian_form', 
@@ -303,7 +341,7 @@
 
                 tambahTahapan() { 
                     this.listTahapan.push({ 
-                        nama_tahapan: '', deskripsi: '', tanggal_mulai: '', tanggal_selesai: '', file_lama: '', 
+                        id: null, nama_tahapan: '', deskripsi: '', tanggal_mulai: '', tanggal_selesai: '', file_lama: '',
                         metodeDistribusi: 'sama', tugasJabatan: [], ada_tugas: false, is_pengumuman: false, is_rentang_waktu: false 
                     }); 
                     this.activeTahapanIndex = this.listTahapan.length - 1;
@@ -318,6 +356,10 @@
                 },
 
                 simpanSkemaKeTugas() {
+                    this.currentFormSchema = this.currentFormSchema.map((field, index) => ({
+                        ...field,
+                        id: field.id || field.name || `isian_${index}`,
+                    }));
                     this.listTahapan[this.activeTIndex].tugasJabatan[this.activeJIndex].skema_form = this.currentFormSchema;
                     this.openFormBuilder = false;
                     this.showFormSuccess = true;

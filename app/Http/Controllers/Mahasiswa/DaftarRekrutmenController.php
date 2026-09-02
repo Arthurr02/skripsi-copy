@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use App\Models\PeriodeRekrutmen;
-use App\Models\Tahapan;
-use App\Models\Tugas;
 use App\Models\Jabatan;
 use App\Models\Pendaftaran;
 use App\Models\PengumpulanTugas;
+use App\Models\PeriodeRekrutmen;
+use App\Models\Tahapan;
+use App\Models\Tugas;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DaftarRekrutmenController extends Controller
 {
@@ -23,7 +23,20 @@ class DaftarRekrutmenController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('mahasiswa.rekrutmen.index', compact('rekrutmenAktif'));
+        $jabatanIdsTerdaftar = Pendaftaran::query()
+            ->where('nim', Auth::user()->nim)
+            ->get(['jabatan_1_id', 'jabatan_2_id'])
+            ->flatMap(fn (Pendaftaran $pendaftaran) => [$pendaftaran->jabatan_1_id, $pendaftaran->jabatan_2_id])
+            ->filter()
+            ->unique()
+            ->values();
+
+        $periodeTerdaftar = Jabatan::whereIn('id', $jabatanIdsTerdaftar)
+            ->pluck('periode_rekrutmen_id')
+            ->unique()
+            ->flip();
+
+        return view('mahasiswa.rekrutmen.index', compact('rekrutmenAktif', 'periodeTerdaftar'));
     }
 
     public function info($periode_id)
@@ -40,12 +53,17 @@ class DaftarRekrutmenController extends Controller
     public function kerjakanTahapanSatu($periode_id)
     {
         $rekrutmen = PeriodeRekrutmen::with('organisasi')->findOrFail($periode_id);
+
+        if ($this->sudahTerdaftarPadaPeriode((int) $periode_id, Auth::user()->nim)) {
+            return redirect()->route('mahasiswa.rekrutmen.index')
+                ->with('error_server', 'Anda telah mendaftarkan diri pada rekrutmen ini.');
+        }
         $tahapanSatu = Tahapan::where('periode_rekrutmen_id', $periode_id)
             ->get()
             ->sortBy('waktu_mulai')
             ->first();
 
-        if (!$tahapanSatu) {
+        if (! $tahapanSatu) {
             return redirect()->route('mahasiswa.rekrutmen.info', $periode_id)
                 ->with('error', 'Pendaftaran belum bisa dilakukan karena panitia belum mengatur jadwal tahapan seleksi.');
         }
@@ -61,14 +79,14 @@ class DaftarRekrutmenController extends Controller
                     ? 'Tanpa Divisi Khusus'
                     : $jabatan->nama_posisi;
 
-                if (!isset($groupedJabatan[$namaPosisi])) {
+                if (! isset($groupedJabatan[$namaPosisi])) {
                     $groupedJabatan[$namaPosisi] = [];
                 }
 
                 // Masukkan data jabatan ke dalam grup posisi yang bersangkutan
                 $groupedJabatan[$namaPosisi][] = [
                     'id' => $jabatan->id,
-                    'nama_jabatan' => $jabatan->nama_jabatan
+                    'nama_jabatan' => $jabatan->nama_jabatan,
                 ];
             }
         }
@@ -110,11 +128,12 @@ class DaftarRekrutmenController extends Controller
 
                 foreach ($skemaForm as $field) {
                     $label = $field['label'] ?? null;
-                    if (!$label)
+                    if (! $label) {
                         continue;
+                    }
 
                     $fieldRules = [];
-                    if (!empty($field['required'])) {
+                    if (! empty($field['required'])) {
                         $fieldRules[] = 'required';
                     } else {
                         $fieldRules[] = 'nullable';
@@ -148,13 +167,7 @@ class DaftarRekrutmenController extends Controller
 
         // 4. Barikade Pendaftaran Ganda
         // Cek apakah nim ini sudah mendaftar di jabatan yang masuk dalam periode ini.
-        $jabatanIdsPeriodeIni = Jabatan::where('periode_rekrutmen_id', $periode_id)->pluck('id');
-
-        $sudahMendaftar = Pendaftaran::where('nim', $nimMahasiswa)
-            ->whereIn('jabatan_1_id', $jabatanIdsPeriodeIni)
-            ->exists();
-
-        if ($sudahMendaftar) {
+        if ($this->sudahTerdaftarPadaPeriode((int) $periode_id, $nimMahasiswa)) {
             return back()->with('error_server', 'Pendaftaran gagal. Anda sudah terdaftar di sistem rekrutmen organisasi ini.');
         }
 
@@ -187,11 +200,11 @@ class DaftarRekrutmenController extends Controller
             }
 
             // 8. Simpan ke Tabel `pengumpulan_tugas` jika ada tugas pada tahap 1 (Meski kosong, tetap buat relasinya jika diminta)
-            if ($tugas && !empty($lampiranJawaban)) {
+            if ($tugas && ! empty($lampiranJawaban)) {
                 PengumpulanTugas::create([
                     'tugas_id' => $tugas->id,
                     'pendaftaran_id' => $pendaftaran->id,
-                    'lampiran_jawaban' => json_encode($lampiranJawaban) // Konversi ke JSON karena di database format JSON/Text
+                    'lampiran_jawaban' => json_encode($lampiranJawaban), // Konversi ke JSON karena di database format JSON/Text
                 ]);
             }
 
@@ -202,11 +215,12 @@ class DaftarRekrutmenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error_server', 'Terjadi kendala internal database: ' . $e->getMessage() . ' (Baris: ' . $e->getLine() . ')');
+
+            report($e);
+
+            return back()->withInput()->with('error_server', 'Terjadi kendala internal saat menyimpan pendaftaran. Silakan coba lagi.');
         }
     }
-
-
 
     // MENU 2: REKRUTMEN YANG SEDANG DIIKUTI
     public function diikuti()
@@ -217,5 +231,17 @@ class DaftarRekrutmenController extends Controller
     public function detailDiikuti($periode_id)
     {
         // Menampilkan timeline lanjutan dan tugas tahapan berikutnya
+    }
+
+    private function sudahTerdaftarPadaPeriode(int $periodeId, string $nim): bool
+    {
+        $jabatanIds = Jabatan::where('periode_rekrutmen_id', $periodeId)->pluck('id');
+
+        return Pendaftaran::where('nim', $nim)
+            ->where(function ($query) use ($jabatanIds) {
+                $query->whereIn('jabatan_1_id', $jabatanIds)
+                    ->orWhereIn('jabatan_2_id', $jabatanIds);
+            })
+            ->exists();
     }
 }

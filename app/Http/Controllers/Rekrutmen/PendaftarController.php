@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Rekrutmen;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
-use App\Models\PeriodeRekrutmen;
-use App\Models\Pendaftaran;
 use App\Models\Jabatan;
 use App\Models\Panitia;
+use App\Models\Pendaftaran;
+use App\Models\PeriodeRekrutmen;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PendaftarController extends Controller
 {
@@ -29,11 +28,12 @@ class PendaftarController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$kepanitiaan) {
+            if (! $kepanitiaan) {
                 abort(403, 'Akses ditolak. Anda bukan panitia yang sah.');
             }
 
             $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+            abort_unless($periodePanitia, 403, 'Periode rekrutmen panitia tidak ditemukan.');
             $organisasiId = $periodePanitia->organisasi_id;
         }
 
@@ -43,32 +43,33 @@ class PendaftarController extends Controller
             ->latest()
             ->first();
 
-        if (!$periodeAktif) {
+        if (! $periodeAktif) {
             return view('rekrutmen.pendaftar.index', [
                 'daftarPeserta' => collect(),
                 'totalPendaftar' => 0,
                 'periodeAktif' => null,
-                'listJabatan' => collect()
+                'listJabatan' => collect(),
+                'routePrefix' => Auth::guard('organisasi')->check() ? 'organisasi.' : 'panitia.',
             ]);
         }
 
         // Ambil daftar jabatan untuk filter Frontend
         // KODE BARU (Diperbarui dengan relasi posisi)
         // UBAH DARI INI:
-// $listJabatan = Jabatan::with('posisi')
-//     ->where('periode_rekrutmen_id', $periodeAktif->id)
-//     ->get();
+        // $listJabatan = Jabatan::with('posisi')
+        //     ->where('periode_rekrutmen_id', $periodeAktif->id)
+        //     ->get();
 
         // MENJADI SEPERTI INI:
         $listJabatan = Jabatan::where('periode_rekrutmen_id', $periodeAktif->id)->get();
 
         // 🌟 3. SUSUN KUERI DASAR PENDAFTAR
-        // Diperbaiki: Karena tabel pendaftaran tidak punya periode_rekrutmen_id, 
+        // Diperbaiki: Karena tabel pendaftaran tidak punya periode_rekrutmen_id,
         // kita hubungkan lewat jabatan_1_id
         $query = Pendaftaran::with([
             'mahasiswa', // Relasi harus berdasarkan 'nim' (sesuai DB)
             'pilihanJabatan1',
-            'pilihanJabatan2'
+            'pilihanJabatan2',
         ])
             ->whereHas('pilihanJabatan1', function ($q) use ($periodeAktif) {
                 $q->where('periode_rekrutmen_id', $periodeAktif->id);
@@ -98,7 +99,7 @@ class PendaftarController extends Controller
             });
         }
 
-        // 🌟 5. LOGIKA FILTER: STATUS SELEKSI 
+        // 🌟 5. LOGIKA FILTER: STATUS SELEKSI
         if ($request->filled('filter_status')) {
             $status = $request->filter_status;
 
@@ -113,7 +114,7 @@ class PendaftarController extends Controller
             }
         }
 
-        // 🌟 6. LOGIKA SORTING 
+        // 🌟 6. LOGIKA SORTING
         if ($request->sort === 'nama') {
             // Diperbaiki: Mahasiswa menggunakan 'nim' sebagai primary key
             $query->join('mahasiswa', 'pendaftaran.nim', '=', 'mahasiswa.nim')
@@ -128,11 +129,14 @@ class PendaftarController extends Controller
         $totalPendaftar = $daftarPeserta->total();
 
         // 🌟 8. LEMPAR KE TAMPILAN
+        $routePrefix = Auth::guard('organisasi')->check() ? 'organisasi.' : 'panitia.';
+
         return view('rekrutmen.pendaftar.index', compact(
             'daftarPeserta',
             'totalPendaftar',
             'periodeAktif',
-            'listJabatan'
+            'listJabatan',
+            'routePrefix'
         ));
     }
 }

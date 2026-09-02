@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Organisasi;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use App\Models\PeriodeRekrutmen;
-use App\Models\Panitia;
 use App\Models\Mahasiswa;
+use App\Models\Panitia;
+use App\Models\PeriodeRekrutmen;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BukaRekrutmenController extends Controller
 {
@@ -30,7 +30,7 @@ class BukaRekrutmenController extends Controller
         $organisasiId = Auth::guard('organisasi')->id();
 
         // 2. CEK VALDASI : Apakah ada rekrutmen yang SEDANG BERJALAN AKTIF (status_aktif = 1)
-        $rekrutmenAktif = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+        $rekrutmenAktif = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
             ->whereIn('status_aktif', [1, 2])
             ->first();
 
@@ -41,7 +41,7 @@ class BukaRekrutmenController extends Controller
         DB::beginTransaction();
         try {
             // 3. Buat Draft Periode
-            $periode = \App\Models\PeriodeRekrutmen::create([
+            $periode = PeriodeRekrutmen::create([
                 'organisasi_id' => $organisasiId,
                 'tahun_periode' => $request->tahun_periode,
                 'status_aktif' => 1,
@@ -52,17 +52,17 @@ class BukaRekrutmenController extends Controller
             // 4. Looping data NIM panitia dan konversi otomatis menjadi Email
             foreach ($nims as $nim) {
                 $nim = trim($nim);
-                $emailDikonversi = $nim . '@stis.ac.id'; // Penggabungan otomatis di sisi server
+                $emailDikonversi = $nim.'@stis.ac.id'; // Penggabungan otomatis di sisi server
 
-                \App\Models\Mahasiswa::firstOrCreate(
+                Mahasiswa::firstOrCreate(
                     ['nim' => $nim],
                     [
                         'email_kampus' => $emailDikonversi,
-                        'nama_lengkap' => 'Panitia (Belum Login)'
+                        'nama_lengkap' => 'Panitia (Belum Login)',
                     ]
                 );
 
-                \App\Models\Panitia::create([
+                Panitia::create([
                     'periode_rekrutmen_id' => $periode->id,
                     'nim' => $nim,
                 ]);
@@ -73,12 +73,15 @@ class BukaRekrutmenController extends Controller
             return back()->with([
                 'success_inisiasi' => true,
                 'periode_id' => $periode->id,
-                'tahun_periode' => $periode->tahun_periode
+                'tahun_periode' => $periode->tahun_periode,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
+
+            report($e);
+
+            return back()->withInput()->with('error_server', 'Gagal menyimpan data. Silakan coba lagi.');
         }
     }
 

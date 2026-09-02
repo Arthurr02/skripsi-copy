@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use App\Models\PeriodeRekrutmen;
 use App\Models\AnggotaOrganisasi;
 use App\Models\Mahasiswa;
+use App\Models\PeriodeRekrutmen;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PeriodeRekrutmenController extends Controller
 {
@@ -33,27 +33,27 @@ class PeriodeRekrutmenController extends Controller
         $organisasiId = Auth::guard('organisasi')->id();
 
         // 2. CEK VALDASI 1: Apakah ada rekrutmen yang SEDANG BERJALAN AKTIF (status_aktif = 1)
-        $rekrutmenAktif = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+        $rekrutmenAktif = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
             ->where('status_aktif', 1)
             ->first();
 
         if ($rekrutmenAktif) {
-            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen periode ' . $rekrutmenAktif->tahun_periode . ' yang sedang berjalan aktif. Anda harus menyelesaikan atau menonaktifkannya terlebih dahulu sebelum bisa membuka rekrutmen baru.');
+            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen periode '.$rekrutmenAktif->tahun_periode.' yang sedang berjalan aktif. Anda harus menyelesaikan atau menonaktifkannya terlebih dahulu sebelum bisa membuka rekrutmen baru.');
         }
 
         // 3. CEK VALIDASI 2: Apakah tahun periode yang dipilih sudah pernah dibuat
-        $periodeSama = \App\Models\PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+        $periodeSama = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
             ->where('tahun_periode', $request->tahun_periode)
             ->first();
 
         if ($periodeSama) {
-            return back()->withInput()->with('periode_terdaftar', 'Rekrutmen untuk periode ' . $request->tahun_periode . ' sudah pernah diinisiasi oleh organisasi Anda.');
+            return back()->withInput()->with('periode_terdaftar', 'Rekrutmen untuk periode '.$request->tahun_periode.' sudah pernah diinisiasi oleh organisasi Anda.');
         }
 
         DB::beginTransaction();
         try {
             // 4. Buat Draft Periode
-            $periode = \App\Models\PeriodeRekrutmen::create([
+            $periode = PeriodeRekrutmen::create([
                 'organisasi_id' => $organisasiId,
                 'tahun_periode' => $request->tahun_periode,
                 'status_aktif' => 0,
@@ -64,21 +64,21 @@ class PeriodeRekrutmenController extends Controller
             // 5. Looping data NIM panitia dan konversi otomatis menjadi Email
             foreach ($nims as $nim) {
                 $nim = trim($nim);
-                $emailDikonversi = $nim . '@stis.ac.id'; // Penggabungan otomatis di sisi server
+                $emailDikonversi = $nim.'@stis.ac.id'; // Penggabungan otomatis di sisi server
 
-                \App\Models\Mahasiswa::firstOrCreate(
+                Mahasiswa::firstOrCreate(
                     ['nim' => $nim],
                     [
                         'email_kampus' => $emailDikonversi,
-                        'nama_lengkap' => 'Panitia (Belum Login)'
+                        'nama_lengkap' => 'Panitia (Belum Login)',
                     ]
                 );
 
-                \App\Models\AnggotaOrganisasi::create([
+                AnggotaOrganisasi::create([
                     'periode_rekrutmen_id' => $periode->id,
                     'nim' => $nim,
                     'jabatan' => 'Panitia Rekrutmen', // Jabatan paten
-                    'panitia_rekrutmen' => 1
+                    'panitia_rekrutmen' => 1,
                 ]);
             }
 
@@ -87,12 +87,15 @@ class PeriodeRekrutmenController extends Controller
             return back()->with([
                 'success_inisiasi' => true,
                 'periode_id' => $periode->id,
-                'tahun_periode' => $periode->tahun_periode
+                'tahun_periode' => $periode->tahun_periode,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error_server', 'Gagal menyimpan data ke database: ' . $e->getMessage());
+
+            report($e);
+
+            return back()->withInput()->with('error_server', 'Gagal menyimpan data. Silakan coba lagi.');
         }
     }
 

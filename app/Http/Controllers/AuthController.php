@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Mahasiswa;
+use App\Models\Organisasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
-
-use App\Models\Mahasiswa;
-use App\Models\Organisasi;
 
 class AuthController extends Controller
 {
@@ -41,6 +40,7 @@ class AuthController extends Controller
 
                 Auth::guard('organisasi')->login($organisasi);
                 $request->session()->regenerate();
+
                 return redirect()->route('organisasi.dashboard');
             }
 
@@ -72,6 +72,7 @@ class AuthController extends Controller
 
         } catch (\Exception $e) {
             \Log::error($e);
+
             return redirect('/')
                 ->with('error', 'Mohon gunakan akun email kampus STIS');
         }

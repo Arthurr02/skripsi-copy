@@ -1,5 +1,6 @@
 <!-- LANGKAH 3: ALUR TAHAPAN SELEKSI -->
 <div
+    id="tahapan-seleksi"
     x-show="tab === 3"
     x-transition:enter="transition ease-out duration-300 transform"
     x-transition:enter-start="opacity-0 translate-y-4"
@@ -68,6 +69,11 @@
                     x-transition:enter-start="opacity-0 translate-y-2"
                     class="p-6 md:p-8 bg-slate-50 border border-slate-200 rounded-lg"
                 >
+                    <input
+                        type="hidden"
+                        :name="`tahapan[${tIndex}][id]`"
+                        x-model="tahapan.id"
+                    />
                     <!-- Header Dalam Tahapan -->
                     <div
                         class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-slate-200 pb-5"
@@ -288,17 +294,21 @@
                                                 class="block w-full rounded-md text-sm border border-slate-300 focus:border-blue-600 focus:ring-0 bg-white py-3 transition-colors"
                                                 required
                                             />
-                                            <p x-show="
+                                            <p
+                                                x-show="
                                                     errors[
                                                         'tanggal_selesai_' +
                                                             tIndex
                                                     ]
-                                                " x-text="
+                                                "
+                                                x-text="
                                                     errors[
                                                         'tanggal_selesai_' +
                                                             tIndex
                                                     ]
-                                                " class="mt-2 text-xs text-red-500 font-bold ml-1"></p>
+                                                "
+                                                class="mt-2 text-xs text-red-500 font-bold ml-1"
+                                            ></p>
                                         </div>
                                     </template>
                                     <template x-if="!tahapan.is_rentang_waktu">
@@ -550,6 +560,21 @@
                                                                 'sama' &&
                                                             jIndex !== 0"
                                                         />
+                                                        <input
+                                                            type="hidden"
+                                                            :name="`tahapan[${tIndex}][tugas][${jIndex}][jabatan_id]`"
+                                                            x-model="
+                                                                tugas.jabatan_id
+                                                            "
+                                                            :disabled="tahapan.metodeDistribusi ===
+                                                                'sama' &&
+                                                            jIndex !== 0"
+                                                        />
+                                                        <input
+                                                            type="hidden"
+                                                            :name="`tahapan[${tIndex}][tugas][${jIndex}][id]`"
+                                                            x-model="tugas.id"
+                                                        />
                                                     </td>
 
                                                     <!-- Kolom 2: Instruksi -->
@@ -612,19 +637,18 @@
                                                                     value="pengisian_form"
                                                                 >
                                                                     📝 Pengisian
-                                                                    Form Web
+                                                                    Form
                                                                 </option>
                                                                 <option
                                                                     value="unggah_berkas"
                                                                 >
-                                                                    ⚙️ Unggah
-                                                                    Hasil Karya
+                                                                    ⚙️ Upload
+                                                                    Berkas
                                                                 </option>
                                                                 <option
                                                                     value="wawancara"
                                                                 >
-                                                                    🎙️ Penilaian
-                                                                    Wawancara
+                                                                    🎙️ Wawancara
                                                                 </option>
                                                             </select>
                                                         </template>

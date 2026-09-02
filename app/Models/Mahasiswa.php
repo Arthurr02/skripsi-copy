@@ -2,18 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Mahasiswa extends Authenticatable
 {
     use HasFactory;
 
     protected $table = 'mahasiswa';
+
     protected $primaryKey = 'nim';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     protected $guarded = [];
 
     protected $fillable = [
@@ -23,7 +26,6 @@ class Mahasiswa extends Authenticatable
         'nama_lengkap',
         'avatar_google',
     ];
-
 
     public function kepanitiaan()
     {

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Mahasiswa;
+use App\Models\Organisasi;
 use App\Models\User;
 
 return [
@@ -69,13 +71,13 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Mahasiswa::class, // Pastikan ini menunjuk ke model Mahasiswa Anda
+            'model' => Mahasiswa::class, // Pastikan ini menunjuk ke model Mahasiswa Anda
         ],
 
         // TAMBAHKAN INI
         'organisasis' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Organisasi::class,
+            'model' => Organisasi::class,
         ],
     ],
 

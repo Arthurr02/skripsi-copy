@@ -67,7 +67,12 @@
                     </header>
                 @endisset
 
-                <main class="flex-1">{{ $slot }}</main>
+                <main class="flex-1">
+                    <div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+                        <x-breadcrumb />
+                    </div>
+                    {{ $slot }}
+                </main>
             </div>
         </div>
     </body>

@@ -3,18 +3,19 @@
 namespace App\Http\Controllers\Rekrutmen;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\UpdateRecruitmentInformationRequest;
+use App\Models\Jabatan;
+use App\Models\Panitia;
+use App\Models\PeriodeRekrutmen;
+use App\Models\PengumpulanTugas;
+use App\Models\Tahapan;
+use App\Models\Tugas;
+use App\Services\Recruitment\PositionSynchronizer;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-
-use App\Models\PeriodeRekrutmen;
-use App\Models\Tahapan;
-use App\Models\Tugas;
-use App\Models\Jabatan;
-use App\Models\Panitia;
-use Carbon\Carbon;
 
 class UpdateInformasiController extends Controller
 {
@@ -32,8 +33,9 @@ class UpdateInformasiController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$kepanitiaan)
+            if (! $kepanitiaan) {
                 abort(403, 'Anda tidak terdaftar sebagai panitia aktif.');
+            }
 
             $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
             $organisasiId = $periodePanitia->organisasi_id;
@@ -44,7 +46,7 @@ class UpdateInformasiController extends Controller
         } else {
             $periode = PeriodeRekrutmen::where('organisasi_id', $organisasiId)->latest()->first();
 
-            if (!$periode) {
+            if (! $periode) {
                 if ($isOrganisasi) {
                     return redirect()->route('organisasi.buka-rekrutmen.index')->with('error_server', 'Silakan buka rekrutmen periode baru terlebih dahulu.');
                 } else {
@@ -53,7 +55,7 @@ class UpdateInformasiController extends Controller
             }
         }
 
-        $tahapanData = Tahapan::with('tugas')
+        $tahapanData = Tahapan::with('tugas.jabatan')
             ->where('periode_rekrutmen_id', $periode->id)
             ->orderBy('urutan_tahapan', 'asc')
             ->get()
@@ -81,16 +83,19 @@ class UpdateInformasiController extends Controller
                 // Ubah tanda '-' menjadi string kosong agar cantik di UI
                 $posisi = ($jabatan->nama_posisi === '-' || empty($jabatan->nama_posisi)) ? '' : $jabatan->nama_posisi;
 
-                if (!isset($tempGroup[$posisi])) {
+                if (! isset($tempGroup[$posisi])) {
                     $tempGroup[$posisi] = [];
                 }
-                $tempGroup[$posisi][] = ['nama' => $jabatan->nama_jabatan];
+                $tempGroup[$posisi][] = [
+                    'id' => $jabatan->id,
+                    'nama' => $jabatan->nama_jabatan,
+                ];
             }
 
             foreach ($tempGroup as $posisi => $jabatans) {
                 $groupedJabatan[] = [
                     'posisi' => $posisi,
-                    'jabatans' => $jabatans
+                    'jabatans' => $jabatans,
                 ];
             }
         } else {
@@ -98,8 +103,8 @@ class UpdateInformasiController extends Controller
             $groupedJabatan = [
                 [
                     'posisi' => '',
-                    'jabatans' => [['nama' => '']]
-                ]
+                    'jabatans' => [['nama' => '']],
+                ],
             ];
         }
         // ---------------------------------------------
@@ -109,27 +114,8 @@ class UpdateInformasiController extends Controller
     }
 
     // 2. FUNGSI UNTUK MENYIMPAN DATA (POST)
-    public function store(Request $request, $periode_id)
+    public function store(UpdateRecruitmentInformationRequest $request, int $periode_id, PositionSynchronizer $positionSynchronizer)
     {
-        $request->validate([
-            'slogan' => 'required|string',
-            'deskripsi_rekrutmen' => 'required|string',
-            'banner' => 'nullable|file|mimetypes:image/jpeg,image/png|mimes:jpg,jpeg,png|max:2048',
-            'buku_pedoman' => 'nullable|file|mimetypes:application/pdf|mimes:pdf|max:5120',
-            // --- VALIDASI POSISI DAN JABATAN ---
-            'nama_posisi' => 'nullable|array',
-            'nama_posisi.*' => 'nullable|string',
-            'nama_jabatan' => 'required|array|min:1',
-            'nama_jabatan.*' => 'required|string|regex:/^[a-zA-Z0-9 ]+$/',
-            // -----------------------------------
-            'tahapan' => 'required|array|min:1',
-            'tahapan.*.nama_tahapan' => 'required|string',
-            'tahapan.*.deskripsi' => 'required|string',
-            'tahapan.*.tugas.*.deskripsi_tugas' => 'nullable|string',
-            'tahapan_lampiran_*' => 'nullable|file|mimetypes:application/pdf|mimes:pdf|max:5120',
-            'tahapan.*.tugas.*.lampiran_files.*' => 'nullable|file|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|mimes:pdf,doc,docx|max:2048',
-        ]);
-
         DB::beginTransaction();
         try {
             $periode = PeriodeRekrutmen::findOrFail($periode_id);
@@ -138,7 +124,7 @@ class UpdateInformasiController extends Controller
             $dataUpdatePeriode = [
                 'slogan' => strip_tags($request->slogan),
                 'deskripsi' => strip_tags($request->deskripsi_rekrutmen),
-                'status_aktif' => 2
+                'status_aktif' => 2,
             ];
 
             if ($request->hasFile('banner')) {
@@ -159,41 +145,47 @@ class UpdateInformasiController extends Controller
 
             $periode->update($dataUpdatePeriode);
 
-            // 2. KUMPULKAN DATA LAMA
-            $tahapanLama = Tahapan::where('periode_rekrutmen_id', $periode->id)->get()->keyBy('urutan_tahapan');
+            // Jangan menghapus dan membuat ulang tahapan/tugas. Pengumpulan tugas
+            // memiliki foreign key cascade ke tugas, sehingga pola tersebut berisiko
+            // menghapus jawaban mahasiswa secara permanen.
+            $tahapanLama = Tahapan::where('periode_rekrutmen_id', $periode->id)->get()->keyBy('id');
 
             // ... (kode sebelumnya Langkah 1 & 2 tetap sama) ...
 
-            // 3. PROSES JABATAN (MENYESUAIKAN DATABASE ASLI ANDA)
-            Jabatan::where('periode_rekrutmen_id', $periode->id)->delete();
+            $mapJabatanIndex = $positionSynchronizer->synchronize(
+                $periode,
+                $request->input('nama_posisi', []),
+                $request->input('nama_jabatan'),
+                $request->input('jabatan_ids', []),
+            );
 
-            $mapJabatanId = [];     // Pemetaan berdasarkan nama jabatan
-            $mapJabatanIndex = [];  // Peta indeks urutan untuk memastikan tidak tertukar
-            $posisiArray = $request->input('nama_posisi', []);
+            $idTahapanDikirim = collect($request->input('tahapan', []))
+                ->pluck('id')
+                ->filter()
+                ->map(fn ($id) => (int) $id);
+            $tahapanDihapus = $tahapanLama->except($idTahapanDikirim->all());
 
-            foreach ($request->nama_jabatan as $index => $namaJabatan) {
-                if (!empty($namaJabatan)) {
-                    // Ambil posisi yang sejajar dengan index jabatannya. Jika tidak diisi, set sebagai string kosong atau nilai default
-                    $namaPosisiRaw = !empty($posisiArray[$index]) ? trim($posisiArray[$index]) : '-';
+            // Tahapan yang telah memiliki jawaban tidak boleh dihapus dari UI.
+            // Ini menjadi pengaman server-side bila JavaScript atau request dimanipulasi.
+            $tugasDenganJawaban = Tugas::query()
+                ->whereIn('tahapan_id', $tahapanDihapus->pluck('id'))
+                ->whereHas('pengumpulanTugas')
+                ->exists();
 
-                    // Simpan KEDUA data langsung ke dalam tabel jabatan sesuai skema Anda
-                    $jabatanBaru = Jabatan::create([
-                        'periode_rekrutmen_id' => $periode->id,
-                        'nama_posisi' => $namaPosisiRaw,
-                        'nama_jabatan' => trim($namaJabatan)
-                    ]);
-
-                    $mapJabatanId[trim($namaJabatan)] = $jabatanBaru->id;
-                    $mapJabatanIndex[$index] = $jabatanBaru->id;
-                }
+            if ($tugasDenganJawaban) {
+                throw ValidationException::withMessages([
+                    'tahapan' => 'Tahapan yang sudah memiliki jawaban peserta tidak dapat dihapus. Pertahankan tahapan tersebut agar riwayat peserta tetap aman.',
+                ]);
             }
 
-            // 4. RESET TAHAPAN LAMA
-            $listTahapanLamaId = $tahapanLama->pluck('id');
-            Tugas::whereIn('tahapan_id', $listTahapanLamaId)->delete();
-            Tahapan::where('periode_rekrutmen_id', $periode->id)->delete();
+            // Hanya tahapan tanpa satu pun jawaban yang aman untuk dihapus.
+            if ($tahapanDihapus->isNotEmpty()) {
+                Tugas::whereIn('tahapan_id', $tahapanDihapus->pluck('id'))->delete();
+                Tahapan::whereKey($tahapanDihapus->pluck('id'))->delete();
+            }
 
-            // 5. SIMPAN ULANG TAHAPAN
+            // Perbarui data berdasarkan ID agar tugas dan jawaban yang telah
+            // dikumpulkan tetap memakai rekam yang sama.
             $waktuAkhirSebelumnya = null;
 
             foreach ($request->tahapan as $tIndex => $tData) {
@@ -207,7 +199,13 @@ class UpdateInformasiController extends Controller
                 }
                 $waktuAkhirSebelumnya = $waktuSelesai;
 
-                $lampiranPathArray = $tahapanLama->has($urutan) ? ($tahapanLama->get($urutan)->lampiran_tahapan ?? []) : [];
+                $tahapanId = $tData['id'] ?? null;
+                if ($tahapanId && ! $tahapanLama->has((int) $tahapanId)) {
+                    throw ValidationException::withMessages(["tahapan.{$tIndex}.id" => 'Tahapan tidak termasuk dalam periode rekrutmen ini.']);
+                }
+
+                $tahapanLamaSaatIni = $tahapanId ? $tahapanLama->get((int) $tahapanId) : null;
+                $lampiranPathArray = $tahapanLamaSaatIni?->lampiran_tahapan ?? [];
 
                 if ($request->hasFile("tahapan_lampiran_$tIndex")) {
                     foreach ($lampiranPathArray as $old) {
@@ -216,18 +214,22 @@ class UpdateInformasiController extends Controller
                     $lampiranPathArray = [$request->file("tahapan_lampiran_$tIndex")->store('rekrutmen/tahapan', 'public')];
                 }
 
-                $tahapan = Tahapan::create([
+                $atributTahapan = [
                     'periode_rekrutmen_id' => $periode->id,
                     'nama_tahapan' => strip_tags($tData['nama_tahapan']),
                     'deskripsi_tahapan' => strip_tags($tData['deskripsi']),
                     'lampiran_tahapan' => empty($lampiranPathArray) ? null : $lampiranPathArray,
                     'waktu_mulai' => $waktuMulai,
                     'waktu_berakhir' => $waktuSelesai,
-                    'urutan_tahapan' => $urutan
-                ]);
+                    'urutan_tahapan' => $urutan,
+                ];
+
+                $tahapan = $tahapanLamaSaatIni
+                    ? tap($tahapanLamaSaatIni)->update($atributTahapan)
+                    : Tahapan::create($atributTahapan);
 
                 // 6. PROSES TUGAS
-                if (!$isPengumuman && isset($tData['tugas']) && is_array($tData['tugas'])) {
+                if (! $isPengumuman && isset($tData['tugas']) && is_array($tData['tugas'])) {
                     $metodeDistribusi = $tData['metode_distribusi'] ?? 'sama';
                     $pathsTemplate = [];
 
@@ -252,15 +254,18 @@ class UpdateInformasiController extends Controller
 
                     foreach ($tData['tugas'] as $jIndex => $tugasData) {
                         if ($metodeDistribusi === 'sama') {
-                            if ($jIndex !== 0)
+                            if ($jIndex !== 0) {
                                 continue;
+                            }
 
-                            // 🌟 PERBAIKAN: Gunakan $mapJabatanIndex, BUKAN $mapJabatanId
-                            foreach ($mapJabatanIndex as $finalIndex => $jabatanIdFinal) {
+                            foreach ($mapJabatanIndex as $jabatanIdFinal) {
                                 $tipeTugas = $urutan === 1 ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
                                 $tipeJawaban = ($tipeTugas === 'pengisian_form') ? 'form' : (($tipeTugas === 'wawancara') ? 'wawancara' : (isset($tugasData['format_proyek']) ? implode(',', $tugasData['format_proyek']) : ''));
 
-                                Tugas::create([
+                                Tugas::updateOrCreate([
+                                    'tahapan_id' => $tahapan->id,
+                                    'jabatan_id' => $jabatanIdFinal,
+                                ], [
                                     'tahapan_id' => $tahapan->id,
                                     'jabatan_id' => $jabatanIdFinal,
                                     'tipe_tugas' => $tipeTugas,
@@ -268,18 +273,19 @@ class UpdateInformasiController extends Controller
                                     'deskripsi_tugas' => strip_tags($tugasData['deskripsi_tugas'] ?? ''),
                                     'lampiran_tugas' => [
                                         'berkas' => $pathsTemplate,
-                                        'form' => json_decode($tugasData['skema_form_json'] ?? '[]', true) ?: []
+                                        'form' => json_decode($tugasData['skema_form_json'] ?? '[]', true) ?: [],
                                     ],
                                 ]);
                             }
                         } else {
-                            if (empty($tugasData['nama_jabatan']))
+                            if (empty($tugasData['nama_jabatan'])) {
                                 continue;
+                            }
 
-                            // LOGIKA BARU: Cari berdasarkan Index dahulu agar akurat, lalu fallback ke nama jabatan
-                            $jabatanIdFinal = $mapJabatanIndex[$jIndex] ?? ($mapJabatanId[trim($tugasData['nama_jabatan'])] ?? null);
-                            if (!$jabatanIdFinal)
+                            $jabatanIdFinal = $tugasData['jabatan_id'] ?? ($mapJabatanIndex[$jIndex] ?? null);
+                            if (! $jabatanIdFinal) {
                                 continue;
+                            }
                             $pathsRaw = json_decode($tugasData['berkas_lama_json'] ?? '[]', true);
                             while (is_string($pathsRaw)) {
                                 $pathsRaw = json_decode($pathsRaw, true);
@@ -300,7 +306,10 @@ class UpdateInformasiController extends Controller
                             $tipeTugas = $urutan === 1 ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
                             $tipeJawaban = ($tipeTugas === 'pengisian_form') ? 'form' : (($tipeTugas === 'wawancara') ? 'wawancara' : (isset($tugasData['format_proyek']) ? implode(',', $tugasData['format_proyek']) : ''));
 
-                            Tugas::create([
+                            Tugas::updateOrCreate([
+                                'tahapan_id' => $tahapan->id,
+                                'jabatan_id' => $jabatanIdFinal,
+                            ], [
                                 'tahapan_id' => $tahapan->id,
                                 'jabatan_id' => $jabatanIdFinal,
                                 'tipe_tugas' => $tipeTugas,
@@ -308,7 +317,7 @@ class UpdateInformasiController extends Controller
                                 'deskripsi_tugas' => strip_tags($tugasData['deskripsi_tugas'] ?? ''),
                                 'lampiran_tugas' => [
                                     'berkas' => $paths,
-                                    'form' => json_decode($tugasData['skema_form_json'] ?? '[]', true) ?: []
+                                    'form' => json_decode($tugasData['skema_form_json'] ?? '[]', true) ?: [],
                                 ],
                             ]);
                         }
@@ -326,9 +335,12 @@ class UpdateInformasiController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            if ($e instanceof ValidationException)
+            if ($e instanceof ValidationException) {
                 throw $e;
-            dd($e->getMessage(), $e->getFile(), $e->getLine());
+            }
+            report($e);
+
+            return back()->withInput()->with('error_server', 'Gagal menyimpan perubahan. Silakan coba lagi.');
         }
     }
 }

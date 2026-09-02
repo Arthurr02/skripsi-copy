@@ -14,7 +14,10 @@
             if (!isset($tempGroup[$posisi])) {
                 $tempGroup[$posisi] = [];
             }
-            $tempGroup[$posisi][] = ['nama' => $jabatan->nama_jabatan];
+            $tempGroup[$posisi][] = [
+                'id' => $jabatan->id,
+                'nama' => $jabatan->nama_jabatan,
+            ];
         }
 
         foreach ($tempGroup as $posisi => $jabatans) {
@@ -116,6 +119,12 @@
                                             type="hidden"
                                             name="nama_posisi[]"
                                             :value="group.posisi"
+                                        />
+
+                                        <input
+                                            type="hidden"
+                                            name="jabatan_ids[]"
+                                            :value="jabatan.id || ''"
                                         />
 
                                         <input

@@ -1,19 +1,21 @@
 <x-app-layout>
     <div
-        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10 bg-slate-50"
+        class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10"
     >
         <div
             class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGg0MHY0MEgwVjB6bTIwIDIwaDIwdjIwSDIwaC0yMHptMCAwaC0yMHYtMjBoMjB2MjB6IiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iI2YxZjVmOSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')] opacity-60"
         ></div>
         <div
-            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-200/80 to-blue-50/20 blur-[100px]"
+            class="absolute -top-[20%] -left-[10%] w-[40%] h-[60%] rounded-full bg-gradient-to-br from-blue-300/80 to-blue-50/20 blur-[100px]"
         ></div>
         <div
             class="absolute top-[10%] right-[10%] w-[35%] h-[50%] rounded-full bg-gradient-to-bl from-indigo-200/60 to-transparent blur-[120px]"
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10 pb-24">
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HEADER SELARAS -->
         <div
             class="mb-8 border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4"
@@ -197,7 +199,7 @@
                                     <div
                                         class="flex flex-col sm:items-end w-full min-w-0"
                                     >
-                                        <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate max-w-full -mb-1">
+                                        <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate max-w-full -mb-0.5">
                                             {{
                                                 !empty($item->jabatan_1->nama_posisi) &&
                                                 $item->jabatan_1->nama_posisi !== '-'
@@ -205,7 +207,7 @@
                                                     : 'Tanpa Divisi Khusus'
                                             }}
                                         </p>
-                                        <p class="text-xs font-extrabold text-slate-700 truncate max-w-full leading-tight">
+                                        <p class="text-xs font-extrabold text-slate-700 uppercase max-w-full leading-tight">
                                             {{
                                                 $item->jabatan_1
                                                     ->nama_jabatan
@@ -223,7 +225,7 @@
                                         <div
                                             class="flex flex-col sm:items-end w-full min-w-0"
                                         >
-                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-full -mb-1">
+                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-full -mb-0.5">
                                                 {{
                                                     !empty($item->jabatan_2->nama_posisi) &&
                                                     $item->jabatan_2->nama_posisi !== '-'
@@ -231,7 +233,7 @@
                                                         : 'Tanpa Divisi Khusus'
                                                 }}
                                             </p>
-                                            <p class="text-xs font-bold text-slate-600 truncate max-w-full leading-tight">
+                                            <p class="text-[9px] font-bold uppercase text-slate-600 max-w-full leading-tight">
                                                 {{
                                                     $item->jabatan_2
                                                         ->nama_jabatan

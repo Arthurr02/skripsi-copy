@@ -44,6 +44,7 @@ class AuthenticatedSessionController extends Controller
 
         Auth::guard('mahasiswa')->logout();
         Auth::guard('organisasi')->logout();
+
         return redirect('/');
     }
 }

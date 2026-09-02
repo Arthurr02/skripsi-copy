@@ -185,7 +185,7 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }"
-        class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-10 pb-24"
+        class="relative z-10 max-w-5xl mx-auto py-4 sm:py-8 px-8 md:px-10 w-full pb-24"
     >
         @include ('mahasiswa.rekrutmen.pendaftaran.partials.header')
         @include ('mahasiswa.rekrutmen.pendaftaran.partials.stepper')

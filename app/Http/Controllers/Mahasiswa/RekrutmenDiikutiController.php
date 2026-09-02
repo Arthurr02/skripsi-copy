@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
+use App\Models\Jabatan;
+use App\Models\Organisasi;
 // Impor Semua Model yang Diperlukan
 use App\Models\Pendaftaran;
-use App\Models\Jabatan;
-use App\Models\PeriodeRekrutmen;
-use App\Models\Organisasi;
-use App\Models\Tahapan;
-use App\Models\Tugas; // 🌟 DITAMBAHKAN: Model Tugas
 use App\Models\PengumpulanTugas;
+use App\Models\PeriodeRekrutmen;
+use App\Models\Tahapan;
+use App\Models\Tugas;
+use Carbon\Carbon; // 🌟 DITAMBAHKAN: Model Tugas
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class RekrutmenDiikutiController extends Controller
 {
@@ -69,7 +72,7 @@ class RekrutmenDiikutiController extends Controller
 
         // 1. Ambil pendaftaran dengan Eager Loading
         $pendaftaran = Pendaftaran::with([
-            'pilihanJabatan1.periode.organisasi'
+            'pilihanJabatan1.periode.organisasi',
         ])
             ->where('id', $id)
             ->where('nim', $user->nim) // Proteksi keamanan akun mahasiswa
@@ -105,15 +108,15 @@ class RekrutmenDiikutiController extends Controller
         $tahapans = Tahapan::with([
             'tugas' => function ($query) use ($pendaftaran) {
                 $query->where('jabatan_id', $pendaftaran->jabatan_1_id);
-            }
+            },
         ])
             ->where('periode_rekrutmen_id', $jabatanUtama->periode_rekrutmen_id ?? 0)
             ->orderBy('urutan_tahapan', 'asc')
             ->get()
             ->map(function ($tahapan) use ($now) {
                 // Konversi dan injeksi properti waktu langsung ke objek
-                $mulai = \Carbon\Carbon::parse($tahapan->waktu_mulai);
-                $berakhir = \Carbon\Carbon::parse($tahapan->waktu_berakhir);
+                $mulai = Carbon::parse($tahapan->waktu_mulai);
+                $berakhir = Carbon::parse($tahapan->waktu_berakhir);
 
                 $tahapan->parsed_mulai = $mulai;
                 $tahapan->parsed_berakhir = $berakhir;
@@ -130,9 +133,16 @@ class RekrutmenDiikutiController extends Controller
             });
 
         // 4. Ambil Tugas Dikumpulkan
-        $tugasDikumpulkan = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
-            ->pluck('tugas_id')
-            ->toArray();
+        $pengumpulanTugas = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
+            ->get()
+            ->keyBy('tugas_id');
+        $tugasDikumpulkan = $pengumpulanTugas->keys()->all();
+
+        $tahapans->each(function ($tahapan) use ($pengumpulanTugas) {
+            $tahapan->tugas->each(function ($tugas) use ($pengumpulanTugas) {
+                $tugas->pengumpulan_mahasiswa = $pengumpulanTugas->get($tugas->id);
+            });
+        });
 
         return view('mahasiswa.diikuti.daftar-tahapan', compact(
             'pendaftaran',
@@ -169,13 +179,24 @@ class RekrutmenDiikutiController extends Controller
             ->where('nim', $user->nim)
             ->firstOrFail();
 
-        // 2. Ambil Data Tugas
-        $tugas = Tugas::findOrFail($tugas_id);
+        // Tugas wajib merupakan tugas jabatan pilihan mahasiswa pada periode yang sama.
+        $tugas = $this->temukanTugasMilikPendaftaran($pendaftaran, (int) $tugas_id);
 
         // 3. Ambil Riwayat Pengumpulan (Jika mahasiswa sudah pernah mengisi)
         $pengumpulan = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
             ->where('tugas_id', $tugas->id)
             ->first();
+
+        $waktuBerakhir = Carbon::parse($tugas->tahapan->waktu_berakhir);
+        $dapatDikerjakan = now()->between(
+            Carbon::parse($tugas->tahapan->waktu_mulai),
+            $waktuBerakhir,
+        );
+
+        if (!$dapatDikerjakan && !$pengumpulan) {
+            return redirect()->route('mahasiswa.rekrutmen.diikuti.tahapan', $pendaftaran->id)
+                ->with('error', 'Tugas ini tidak dapat dikerjakan karena belum dibuka atau waktu pengumpulan telah berakhir.');
+        }
 
         // 4. Proses JSON Struktur Form Dinamis yang dibuat Panitia
         $lampiranData = is_string($tugas->lampiran_tugas)
@@ -183,6 +204,7 @@ class RekrutmenDiikutiController extends Controller
             : ($tugas->lampiran_tugas ?? []);
 
         $komponenForm = $lampiranData['form'] ?? [];
+        $lampiranPenugasan = array_values(array_filter((array) ($lampiranData['berkas'] ?? [])));
 
         // 5. Proses JSON Jawaban Mahasiswa (Disesuaikan dengan DB: lampiran_jawaban)
         $jawabanSebelumnya = [];
@@ -191,8 +213,12 @@ class RekrutmenDiikutiController extends Controller
                 ? json_decode($pengumpulan->lampiran_jawaban, true)
                 : $pengumpulan->lampiran_jawaban;
 
-            // Ambil isian yang ada di dalam kunci "form"
-            $jawabanSebelumnya = $parsedJawaban['form'] ?? $parsedJawaban;
+            // Normalisasi kunci lama (label asli, slug, maupun indeks) agar
+            // satu komponen form hanya dibaca melalui satu nama bidang.
+            $jawabanSebelumnya = $this->normalisasiJawabanForm(
+                $komponenForm,
+                $parsedJawaban['form'] ?? $parsedJawaban,
+            );
         }
 
         // Arahkan ke file View yang baru
@@ -200,8 +226,11 @@ class RekrutmenDiikutiController extends Controller
             'pendaftaran',
             'tugas',
             'komponenForm',
+            'lampiranPenugasan',
             'pengumpulan',
-            'jawabanSebelumnya'
+            'jawabanSebelumnya',
+            'dapatDikerjakan',
+            'waktuBerakhir'
         ));
     }
 
@@ -216,11 +245,12 @@ class RekrutmenDiikutiController extends Controller
             ->where('nim', $user->nim)
             ->firstOrFail();
 
-        $tugas = Tugas::findOrFail($tugas_id);
+        $tugas = $this->temukanTugasMilikPendaftaran($pendaftaran, (int) $tugas_id);
+        $this->pastikanTugasSedangDibuka($tugas);
 
         $pengumpulan = PengumpulanTugas::firstOrNew([
             'pendaftaran_id' => $pendaftaran->id,
-            'tugas_id' => $tugas->id
+            'tugas_id' => $tugas->id,
         ]);
 
         // Ambil data JSON lama agar tidak terhapus saat update
@@ -231,22 +261,81 @@ class RekrutmenDiikutiController extends Controller
                 : $pengumpulan->lampiran_jawaban;
         }
 
+        $existingJawaban['form'] = $this->normalisasiJawabanForm(
+            $this->strukturFormTugas($tugas),
+            $existingJawaban['form'] ?? [],
+        );
+
+        $this->validasiJawabanTugas($request, $tugas, $existingJawaban);
+
         // 3. Logika Penyimpanan untuk Tugas Tipe "Form Dinamis"
         if ($request->has('jawaban_form')) {
-            $existingJawaban['form'] = $request->input('jawaban_form');
+            $existingJawaban['form'] = array_merge(
+                (array) ($existingJawaban['form'] ?? []),
+                $request->input('jawaban_form', []),
+            );
+        }
+
+        $strukturForm = $this->strukturFormTugas($tugas);
+        $jumlahBidangFile = collect($strukturForm)->where('tipe', 'file')->count();
+
+        foreach ($strukturForm as $indeks => $item) {
+            if (($item['tipe'] ?? null) !== 'file') {
+                continue;
+            }
+
+            $nama = $this->namaBidangForm($item, $indeks);
+            $berkasLama = (array) ($existingJawaban['form'][$nama] ?? []);
+            $berkasDipertahankan = $request->has("jawaban_file_pertahankan.{$nama}")
+                ? array_values(array_intersect($berkasLama, (array) $request->input("jawaban_file_pertahankan.{$nama}", [])))
+                : $berkasLama;
+
+            foreach ($this->ambilBerkasForm($request, $nama, $jumlahBidangFile === 1) as $file) {
+                    $berkasDipertahankan[] = $file->store('rekrutmen/jawaban-form', 'public');
+            }
+
+            foreach (array_diff($berkasLama, $berkasDipertahankan) as $berkasDihapus) {
+                Storage::disk('public')->delete($berkasDihapus);
+            }
+
+            $existingJawaban['form'][$nama] = array_values(array_unique($berkasDipertahankan));
         }
 
         // 4. Logika Penyimpanan untuk Tugas Tipe "Upload File / Project"
+        $berkasLama = (array) ($existingJawaban['berkas'] ?? []);
+        $berkasDipertahankan = $request->has('berkas_pertahankan')
+            ? array_values(array_intersect($berkasLama, (array) $request->input('berkas_pertahankan', [])))
+            : $berkasLama;
+
         if ($request->hasFile('file_jawaban')) {
-            $path = $request->file('file_jawaban')->store('rekrutmen/tugas', 'public');
-            $existingJawaban['berkas'] = [$path];
+            try {
+                foreach ($request->file('file_jawaban') as $file) {
+                    $berkasDipertahankan[] = $file->store('rekrutmen/tugas', 'public');
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return back()
+                    ->withInput()
+                    ->withErrors(['file_jawaban' => 'Berkas gagal diunggah. Periksa koneksi Anda lalu coba kembali.']);
+            }
+
+        }
+
+        foreach (array_diff($berkasLama, $berkasDipertahankan) as $berkasDihapus) {
+            Storage::disk('public')->delete($berkasDihapus);
+        }
+        if ($tugas->tipe_jawaban_tugas !== 'form' && $tugas->tipe_tugas !== 'pengisian_form') {
+            $existingJawaban['berkas'] = array_values(array_unique($berkasDipertahankan));
         }
 
         // 5. Eksekusi Simpan ke Kolom lampiran_jawaban
-        $pengumpulan->lampiran_jawaban = json_encode($existingJawaban);
+        $pengumpulan->lampiran_jawaban = $existingJawaban;
         $pengumpulan->save();
 
-        return back()->with('success', 'Berhasil! Jawaban penugasan Anda telah disimpan.');
+        return back()
+            ->with('success', 'Jawaban penugasan Anda berhasil diterima dan tersimpan dengan baik.')
+            ->with('success_type', 'tugas');
     }
 
     /**
@@ -260,21 +349,222 @@ class RekrutmenDiikutiController extends Controller
             ->where('nim', $user->nim)
             ->firstOrFail();
 
-        $tugas = Tugas::findOrFail($tugas_id);
+        $tugas = $this->temukanTugasMilikPendaftaran($pendaftaran, (int) $tugas_id);
+        $this->pastikanTugasSedangDibuka($tugas);
 
         $pengumpulan = PengumpulanTugas::firstOrNew([
             'pendaftaran_id' => $pendaftaran->id,
-            'tugas_id' => $tugas->id
+            'tugas_id' => $tugas->id,
         ]);
 
-        // Catat kehadiran di dalam JSON
-        $pengumpulan->jawaban_form = json_encode([
+        // Catat kehadiran dalam kolom JSON yang digunakan seluruh fitur pengumpulan.
+        $pengumpulan->lampiran_jawaban = [
             'status_wawancara' => 'Hadir',
-            'waktu_konfirmasi' => now()->toDateTimeString()
-        ]);
+            'waktu_konfirmasi' => now()->toDateTimeString(),
+        ];
 
         $pengumpulan->save();
 
-        return back()->with('success', 'Konfirmasi kehadiran wawancara Anda berhasil dicatat!');
+        return back()
+            ->with('success', 'Konfirmasi kehadiran wawancara Anda berhasil dicatat.')
+            ->with('success_type', 'wawancara');
+    }
+
+    private function temukanTugasMilikPendaftaran(Pendaftaran $pendaftaran, int $tugasId): Tugas
+    {
+        $jabatan = $pendaftaran->pilihanJabatan1;
+
+        return Tugas::with('tahapan')
+            ->whereKey($tugasId)
+            ->where('jabatan_id', $pendaftaran->jabatan_1_id)
+            ->whereHas('tahapan', fn($query) => $query->where(
+                'periode_rekrutmen_id',
+                $jabatan->periode_rekrutmen_id,
+            ))
+            ->firstOrFail();
+    }
+
+    private function pastikanTugasSedangDibuka(Tugas $tugas): void
+    {
+        $mulai = Carbon::parse($tugas->tahapan->waktu_mulai);
+        $berakhir = Carbon::parse($tugas->tahapan->waktu_berakhir);
+
+        if (!now()->between($mulai, $berakhir)) {
+            throw ValidationException::withMessages([
+                'tugas' => 'Tugas hanya dapat dikirim selama periode pengumpulan berlangsung.',
+            ]);
+        }
+    }
+
+    private function validasiJawabanTugas(Request $request, Tugas $tugas, array $jawabanLama = []): void
+    {
+        $aturan = [];
+        $pesan = [];
+        $struktur = $this->strukturFormTugas($tugas);
+
+        $jumlahBidangFile = collect($struktur)->where('tipe', 'file')->count();
+
+        foreach ($struktur as $indeks => $item) {
+            $nama = $this->namaBidangForm($item, $indeks);
+            $aturanBidang = !empty($item['required']) ? ['required'] : ['nullable'];
+            $tipe = $item['tipe'] ?? 'text_short';
+
+            if ($tipe === 'file') {
+                $berkasLama = (array) ($jawabanLama['form'][$nama] ?? []);
+                $berkasDipertahankan = $request->has("jawaban_file_pertahankan.{$nama}")
+                    ? array_intersect($berkasLama, (array) $request->input("jawaban_file_pertahankan.{$nama}", []))
+                    : $berkasLama;
+                $berkasMasuk = $this->ambilBerkasForm($request, $nama, $jumlahBidangFile === 1);
+                if (empty($berkasDipertahankan) && empty($berkasMasuk) && !empty($item['required'])) {
+                    throw ValidationException::withMessages([
+                        'jawaban_file.'.$nama => 'Berkas '.($item['label'] ?? 'jawaban').' wajib diunggah.',
+                    ]);
+                }
+
+                $aturanPerBerkas = ['file', 'max:5120'];
+                $format = $this->formatBerkasForm($item['allowed_formats'] ?? []);
+                if ($format !== []) {
+                    $aturanPerBerkas[] = 'mimes:'.implode(',', $format);
+                }
+                foreach ($berkasMasuk as $berkas) {
+                    Validator::make(['berkas' => $berkas], ['berkas' => $aturanPerBerkas], [
+                        'berkas.mimes' => 'Format berkas '.($item['label'] ?? 'jawaban').' tidak sesuai.',
+                        'berkas.max' => 'Ukuran setiap berkas '.($item['label'] ?? 'jawaban').' maksimal 5 MB.',
+                    ])->validate();
+                }
+                continue;
+            }
+
+            if ($tipe === 'checkbox') {
+                $aturanBidang[] = 'array';
+            } elseif ($tipe === 'number') {
+                $aturanBidang[] = 'numeric';
+            } elseif ($tipe === 'email') {
+                $aturanBidang[] = 'email';
+            } elseif ($tipe === 'date') {
+                $aturanBidang[] = 'date';
+            } else {
+                $aturanBidang[] = 'string';
+            }
+
+            $aturan['jawaban_form.' . $nama] = $aturanBidang;
+            $pesan['jawaban_form.' . $nama . '.required'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' wajib diisi.';
+            $pesan['jawaban_form.' . $nama . '.numeric'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa angka.';
+            $pesan['jawaban_form.' . $nama . '.email'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa email yang valid.';
+            $pesan['jawaban_form.' . $nama . '.date'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa tanggal yang valid.';
+        }
+
+        if ($tugas->tipe_jawaban_tugas === 'form' || $tugas->tipe_tugas === 'pengisian_form') {
+            if (collect($struktur)->contains(fn ($item) => ($item['tipe'] ?? 'text_short') !== 'file')) {
+                $aturan['jawaban_form'] = ['required', 'array'];
+            }
+        } else {
+            $berkasLama = (array) ($jawabanLama['berkas'] ?? []);
+            $berkasDipertahankan = $request->has('berkas_pertahankan')
+                ? array_intersect($berkasLama, (array) $request->input('berkas_pertahankan', []))
+                : $berkasLama;
+            $aturan['file_jawaban'] = [empty($berkasDipertahankan) ? 'required' : 'nullable', 'array'];
+            $aturan['file_jawaban.*'] = ['file', 'max:5120'];
+            $pesan['file_jawaban.required'] = 'Silakan pilih berkas jawaban sebelum mengirim tugas.';
+            $pesan['file_jawaban.*.max'] = 'Ukuran setiap berkas jawaban maksimal 5 MB.';
+        }
+
+        $request->validate($aturan, $pesan);
+    }
+
+    private function strukturFormTugas(Tugas $tugas): array
+    {
+        $lampiran = is_array($tugas->lampiran_tugas)
+            ? $tugas->lampiran_tugas
+            : (json_decode($tugas->lampiran_tugas ?? '[]', true) ?: []);
+
+        return (array) ($lampiran['form'] ?? []);
+    }
+
+    private function namaBidangForm(array $item, int $indeks): string
+    {
+        if (filled($item['id'] ?? null)) {
+            return $item['id'];
+        }
+
+        if (filled($item['name'] ?? null)) {
+            return $item['name'];
+        }
+
+        return 'isian_'.$indeks;
+    }
+
+    /**
+     * Menyatukan jawaban dari skema lama ke nama bidang kanonis.
+     * Data duplikat label/slug tidak dibawa lagi saat mahasiswa menyimpan revisi.
+     */
+    private function normalisasiJawabanForm(array $struktur, mixed $jawaban): array
+    {
+        $jawaban = is_array($jawaban) ? $jawaban : [];
+        $hasil = [];
+        $kunciLamaTerpakai = [];
+
+        foreach ($struktur as $indeks => $item) {
+            $namaKanonis = $this->namaBidangForm($item, $indeks);
+            $label = $item['label'] ?? '';
+            $slugLabel = str($label)->slug('_')->toString();
+            $kandidat = array_unique(array_filter([
+                'isian_'.$indeks,
+                'field_'.$indeks,
+                $namaKanonis,
+                $label,
+                $slugLabel,
+            ], fn ($nilai) => filled($nilai)));
+
+            foreach ($kandidat as $kunci) {
+                if (
+                    ! in_array($kunci, $kunciLamaTerpakai, true) &&
+                    array_key_exists($kunci, $jawaban) &&
+                    filled($jawaban[$kunci]) &&
+                    $this->sesuaiJenisJawaban($item, $jawaban[$kunci])
+                ) {
+                    $hasil[$namaKanonis] = $jawaban[$kunci];
+                    $kunciLamaTerpakai[] = $kunci;
+                    break;
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
+    private function sesuaiJenisJawaban(array $item, mixed $nilai): bool
+    {
+        $tipe = $item['tipe'] ?? 'text_short';
+
+        return match ($tipe) {
+            'checkbox', 'file' => is_array($nilai),
+            default => ! is_array($nilai),
+        };
+    }
+
+    private function formatBerkasForm(array $format): array
+    {
+        return collect($format)->flatMap(fn ($ekstensi) => match (strtolower($ekstensi)) {
+            'word' => ['doc', 'docx'],
+            'excel' => ['xls', 'xlsx'],
+            default => [strtolower($ekstensi)],
+        })->filter()->unique()->values()->all();
+    }
+
+    /** Mengambil unggahan form dinamis, termasuk payload dari skema lama tanpa nama bidang. */
+    private function ambilBerkasForm(Request $request, string $namaBidang, bool $gunakanFallback): array
+    {
+        $berkas = $request->file('jawaban_file.'.$namaBidang);
+
+        if (empty($berkas) && $gunakanFallback) {
+            $berkas = $request->allFiles()['jawaban_file'] ?? [];
+        }
+
+        return collect((array) $berkas)
+            ->flatten()
+            ->filter(fn ($file) => $file instanceof \Illuminate\Http\UploadedFile && $file->isValid())
+            ->values()
+            ->all();
     }
 }

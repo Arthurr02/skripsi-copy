@@ -2,17 +2,17 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PeriodeRekrutmen;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\PeriodeRekrutmen;
 
 class EnsurePanitiaPeriodeAktif
 {
     public function handle(Request $request, Closure $next)
     {
         // 1. Pastikan pengguna sudah login sebagai panitia
-        if (!Auth::guard('panitia')->check()) {
+        if (! Auth::guard('panitia')->check()) {
             return redirect()->route('login.panitia');
         }
 
@@ -25,7 +25,7 @@ class EnsurePanitiaPeriodeAktif
             ->first();
 
         // Jika tidak ada rekrutmen aktif, blokir akses
-        if (!$periodeAktif) {
+        if (! $periodeAktif) {
             abort(403, 'Tidak ada rekrutmen yang sedang aktif saat ini.');
         }
 

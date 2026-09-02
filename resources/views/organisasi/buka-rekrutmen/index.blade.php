@@ -14,7 +14,9 @@
         ></div>
     </div>
 
-    <div class="p-8 md:p-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
+    <div
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+    >
         <!-- HEADER -->
         <div class="mb-10 relative z-10">
             <h2
