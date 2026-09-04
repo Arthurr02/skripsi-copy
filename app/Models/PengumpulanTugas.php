@@ -17,6 +17,10 @@ class PengumpulanTugas extends Model
         'tugas_id',
         'pendaftaran_id',
         'lampiran_jawaban',
+        'pewawancara_id',
+        'pewawancara_tipe',
+        'pewawancara_akun_id',
+        'pewawancara_nama',
     ];
 
     // Beri tahu Laravel bahwa lampiran_jawaban adalah JSON/Array

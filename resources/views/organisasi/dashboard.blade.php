@@ -184,5 +184,23 @@
             },
         });
         @endif
+
+        @if (session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: @json(session('success')),
+            confirmButtonColor: '#2563eb',
+        });
+        @endif
+
+        @if (session('error_server'))
+        Swal.fire({
+            icon: 'info',
+            title: 'Rekrutmen belum tersedia',
+            text: @json(session('error_server')),
+            confirmButtonColor: '#2563eb',
+        });
+        @endif
     });
 </script>

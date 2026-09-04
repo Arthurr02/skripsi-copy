@@ -29,4 +29,9 @@ class PeriodeRekrutmen extends Model
     {
         return $this->hasMany(Jabatan::class, 'periode_rekrutmen_id');
     }
+
+    public function panitia()
+    {
+        return $this->hasMany(Panitia::class, 'periode_rekrutmen_id');
+    }
 }

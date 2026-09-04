@@ -21,4 +21,9 @@ class Tahapan extends Model
     {
         return $this->hasMany(Tugas::class, 'tahapan_id');
     }
+
+    public function keputusanSeleksi()
+    {
+        return $this->hasMany(KeputusanSeleksi::class, 'tahapan_id');
+    }
 }

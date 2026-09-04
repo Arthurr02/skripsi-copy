@@ -8,6 +8,8 @@
                 link.href &&
                 !link.getAttribute('href').startsWith('#') &&
                 link.target !== '_blank' &&
+                !link.hasAttribute('download') &&
+                !link.hasAttribute('data-no-loading') &&
                 !e.ctrlKey &&
                 !e.metaKey
             ) {
@@ -18,8 +20,10 @@
             }
         });
 
-        document.addEventListener('submit', () => {
-            pageLoading = true;
+        document.addEventListener('submit', (e) => {
+            if (!e.defaultPrevented && !e.target.dataset.noLoading) {
+                pageLoading = true;
+            }
         });
 
         window.addEventListener('pageshow', (event) => {

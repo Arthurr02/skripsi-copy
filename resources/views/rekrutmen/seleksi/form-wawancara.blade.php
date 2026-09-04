@@ -104,9 +104,6 @@
                             >
                         @endif
 
-                        @error('jawaban.' . $pertanyaanItem['key'])
-                            <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p>
-                        @enderror
                     </div>
                 @empty
                     <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
@@ -133,3 +130,18 @@
         </form>
     </div>
 </x-app-layout>
+
+@if ($errors->any() || session('error') || session('error_server'))
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Hasil wawancara belum tersimpan',
+                text: @json(session('error') ?? session('error_server') ?? $errors->first()),
+                confirmButtonText: 'Perbaiki sekarang',
+                confirmButtonColor: '#7c3aed',
+            });
+        });
+    </script>
+@endif

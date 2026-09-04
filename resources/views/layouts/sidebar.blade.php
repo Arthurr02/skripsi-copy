@@ -18,6 +18,8 @@
         $dashboardRoute = $isPanitia ? 'panitia.dashboard' : 'mahasiswa.dashboard';
         $routePrefix = $isPanitia ? 'panitia.' : 'mahasiswa.';
     }
+
+    $rekrutmenAktifTersedia = $rekrutmenAktifTersedia ?? false;
 @endphp
 
 <aside
@@ -177,24 +179,72 @@
                     x-collapse
                     class="ml-[1.35rem] pl-4 border-l-2 border-slate-100 space-y-1 mt-1"
                 >
-                    <a
-                        href="{{ route($routePrefix . 'rekrutmen.update') }}"
-                        class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.update') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
-                    >
-                        Update Informasi
-                    </a>
-                    <a
-                        href="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
-                        class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.pendaftar') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
-                    >
-                        Daftar Peserta
-                    </a>
-                    <a
-                        href="{{ route($routePrefix . 'rekrutmen.seleksi') }}"
-                        class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.seleksi') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
-                    >
-                        Pengerjaan Seleksi
-                    </a>
+                    @if ($rekrutmenAktifTersedia)
+                        <a
+                            href="{{ route($routePrefix . 'rekrutmen.update') }}"
+                            class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.update') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
+                        >
+                            Update Informasi
+                        </a>
+                        @if ($isOrganisasi)
+                            <a
+                                href="{{ route('organisasi.rekrutmen.panitia') }}"
+                                class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs('organisasi.rekrutmen.panitia') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
+                            >
+                                Daftar Panitia
+                            </a>
+                        @endif
+                        <a
+                            href="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
+                            class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.pendaftar') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
+                        >
+                            Daftar Peserta
+                        </a>
+                        <a
+                            href="{{ route($routePrefix . 'rekrutmen.seleksi') }}"
+                            class="block py-2 px-3 text-[13px] rounded-lg transition-colors {{ request()->routeIs($routePrefix . 'rekrutmen.seleksi') ? 'text-blue-700 bg-blue-50/80 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50' }}"
+                        >
+                            Pengerjaan Seleksi
+                        </a>
+                        @if ($isOrganisasi)
+                            <form
+                                id="form-tutup-rekrutmen"
+                                method="POST"
+                                action="{{ route('organisasi.rekrutmen.tutup') }}"
+                            >
+                                @csrf
+                                <button
+                                    type="button"
+                                    onclick="window.konfirmasiTutupRekrutmen()"
+                                    class="block w-full rounded-lg px-3 py-2 text-left text-[13px] text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
+                                >
+                                    Tutup Rekrutmen
+                                </button>
+                            </form>
+                        @endif
+                    @else
+                        @foreach (['Update Informasi', 'Daftar Peserta', 'Pengerjaan Seleksi']
+                            as $namaMenu)
+                            <button
+                                type="button"
+                                onclick="window.beritahuRekrutmenBelumAktif()"
+                                class="block w-full cursor-not-allowed rounded-lg px-3 py-2 text-left text-[13px] text-slate-400"
+                                aria-disabled="true"
+                            >
+                                {{ $namaMenu }}
+                            </button>
+                        @endforeach
+                        @if ($isOrganisasi)
+                            <button
+                                type="button"
+                                onclick="window.beritahuRekrutmenBelumAktif()"
+                                class="block w-full cursor-not-allowed rounded-lg px-3 py-2 text-left text-[13px] text-slate-400"
+                                aria-disabled="true"
+                            >
+                                Daftar Panitia
+                            </button>
+                        @endif
+                    @endif
                 </div>
             </div>
             <div class="pt-5 pb-1.5 px-6">
@@ -235,6 +285,50 @@
         </form>
     </div>
 </aside>
+
+@if ($isOrganisasi || $isPanitia)
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        window.beritahuRekrutmenBelumAktif = function () {
+            const pesan =
+                'Belum ada rekrutmen yang sedang berjalan. Buka rekrutmen terlebih dahulu.';
+
+            if (window.Swal) {
+                window.Swal.fire({
+                    icon: 'info',
+                    title: 'Rekrutmen belum tersedia',
+                    text: pesan,
+                    confirmButtonColor: '#2563eb',
+                });
+                return;
+            }
+
+            window.alert(pesan);
+        };
+
+        window.konfirmasiTutupRekrutmen = function () {
+            const form = document.getElementById('form-tutup-rekrutmen');
+            if (!form) return;
+
+            if (!window.Swal) {
+                form.submit();
+                return;
+            }
+
+            window.Swal.fire({
+                icon: 'warning',
+                title: 'Tutup rekrutmen saat ini?',
+                text: 'Tutup rekrutmen akan memindahkan rekrutmen saat ini ke riwayat rekrutmen. Segala aktivitas seleksi nantinya sudah tidak dapat diproses lagi.',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, tutup rekrutmen',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc2626',
+            }).then((hasil) => {
+                if (hasil.isConfirmed) form.submit();
+            });
+        };
+    </script>
+@endif
 
 <style>
     /* Custom CSS untuk menyembunyikan scrollbar default tapi tetap bisa di-scroll (Premium Look) */

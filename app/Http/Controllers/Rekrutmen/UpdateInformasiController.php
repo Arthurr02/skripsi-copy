@@ -7,7 +7,6 @@ use App\Http\Requests\UpdateRecruitmentInformationRequest;
 use App\Models\Jabatan;
 use App\Models\Panitia;
 use App\Models\PeriodeRekrutmen;
-use App\Models\PengumpulanTugas;
 use App\Models\Tahapan;
 use App\Models\Tugas;
 use App\Services\Recruitment\PositionSynchronizer;
@@ -28,8 +27,10 @@ class UpdateInformasiController extends Controller
             $organisasiId = Auth::guard('organisasi')->id();
         } else {
             $nimPanitia = Auth::user()->nim;
-            $kepanitiaan = Panitia::where('nim', $nimPanitia)
-                ->where('panitia_rekrutmen', 1)
+            $kepanitiaan = Panitia::query()
+                ->with('periode')
+                ->where('nim', $nimPanitia)
+                ->whereHas('periode', fn ($query) => $query->whereIn('status_aktif', [1, 2]))
                 ->latest()
                 ->first();
 
@@ -37,14 +38,19 @@ class UpdateInformasiController extends Controller
                 abort(403, 'Anda tidak terdaftar sebagai panitia aktif.');
             }
 
-            $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+            $periodePanitia = $kepanitiaan->periode;
             $organisasiId = $periodePanitia->organisasi_id;
         }
 
         if ($periode_id) {
-            $periode = PeriodeRekrutmen::where('organisasi_id', $organisasiId)->findOrFail($periode_id);
+            $periode = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+                ->whereIn('status_aktif', [1, 2])
+                ->findOrFail($periode_id);
         } else {
-            $periode = PeriodeRekrutmen::where('organisasi_id', $organisasiId)->latest()->first();
+            $periode = PeriodeRekrutmen::where('organisasi_id', $organisasiId)
+                ->whereIn('status_aktif', [1, 2])
+                ->latest()
+                ->first();
 
             if (! $periode) {
                 if ($isOrganisasi) {

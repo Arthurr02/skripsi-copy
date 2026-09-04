@@ -578,12 +578,14 @@
                                 Kirim Jawaban
                             </button>
                         @else
-                            <div
-                                class="w-full md:w-auto rounded-lg border border-emerald-200 bg-emerald-50 px-6 py-3 text-xs font-bold text-emerald-700 flex items-center justify-center gap-2"
+                            <button
+                                type="button"
+                                disabled
+                                class="w-full md:w-auto cursor-not-allowed rounded-lg bg-slate-200 px-6 py-3 text-xs font-bold text-slate-500 flex items-center justify-center gap-2"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Jawaban telah terkirim
-                            </div>
+                            </button>
                         @endif
                     </div>
                 </form>

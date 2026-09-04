@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory; // BARIS INI YANG TADI TERLEWAT
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Panitia extends Model
 {
@@ -14,4 +15,14 @@ class Panitia extends Model
 
     // 2. Izinkan semua kolom diisi
     protected $guarded = [];
+
+    public function mahasiswa(): BelongsTo
+    {
+        return $this->belongsTo(Mahasiswa::class, 'nim', 'nim');
+    }
+
+    public function periode(): BelongsTo
+    {
+        return $this->belongsTo(PeriodeRekrutmen::class, 'periode_rekrutmen_id');
+    }
 }

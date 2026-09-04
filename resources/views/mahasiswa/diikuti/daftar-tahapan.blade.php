@@ -143,21 +143,6 @@
                         </h1>
                     </div>
                 </div>
-                @if ($errors->has('file_jawaban') || $errors->has('tugas'))
-                    <div
-                        class="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-                    >
-                        <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18 18 6M6 6l12 12"></path></svg>
-                        <div>
-                            <p class="font-bold">Berkas belum terkirim</p>
-                            <p class="mt-0.5 text-xs text-red-700">{{
-                                $errors->first('file_jawaban') ??
-                                    $errors->first('tugas')
-                            }}</p>
-                        </div>
-                    </div>
-                @endif
-
                 <!-- AREA TIMELINE -->
                 <div class="relative w-full overflow-hidden">
                     @foreach ($tahapans as $index => $tahapan)
@@ -251,8 +236,22 @@
 
                                     <!-- Card Body (Tugas & Lampiran) -->
                                     <div class="p-3 sm:p-4 space-y-3">
-                                        <!-- Deskripsi Tahapan -->
-                                        @if ($tahapan->deskripsi_tahapan)
+                                        @if ($tahapan->is_dinyatakan_gagal)
+                                            <p class="text-sm font-bold text-red-600">
+                                                Anda tidak dinyatakan lulus.
+                                            </p>
+                                        @elseif ($tahapan->dikunci_karena_tidak_lulus)
+                                            <button
+                                                type="button"
+                                                disabled
+                                                class="flex w-full items-center justify-between rounded-md border border-slate-200 bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-400 cursor-not-allowed"
+                                            >
+                                                <span>Tahapan terkunci</span>
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"></path></svg>
+                                            </button>
+                                        @else
+                                            <!-- Deskripsi Tahapan -->
+                                            @if ($tahapan->deskripsi_tahapan)
                                             <p class="text-xs text-slate-700 leading-relaxed">
                                                 {{ $tahapan->deskripsi_tahapan }}
                                             </p>
@@ -362,6 +361,7 @@
                                                     </div>
                                                 @endforeach
                                             </div>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -920,10 +920,11 @@
     </div>
 </x-app-layout>
 
-@if (session('success'))
+@if (session('success') || session('error') || session('error_server') || $errors->any())
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            @if (session('success'))
             Swal.fire({
                 icon: 'success',
                 title: @json (session('success_type') === 'wawancara'
@@ -939,6 +940,21 @@
                     confirmButton: 'px-6 py-2.5 rounded-md font-bold text-sm',
                 },
             });
+            @else
+            Swal.fire({
+                icon: 'error',
+                title: 'Pengiriman belum berhasil',
+                text: @json(session('error') ?? session('error_server') ?? $errors->first()),
+                confirmButtonText: 'Perbaiki sekarang',
+                confirmButtonColor: '#dc2626',
+                customClass: {
+                    popup: 'rounded-lg shadow-sm border border-slate-200 font-sans',
+                    title: 'text-xl font-extrabold text-slate-800 tracking-tight',
+                    htmlContainer: 'text-sm font-normal text-slate-500',
+                    confirmButton: 'px-6 py-2.5 rounded-md font-bold text-sm',
+                },
+            });
+            @endif
         });
     </script>
 @endif

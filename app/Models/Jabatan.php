@@ -38,4 +38,9 @@ class Jabatan extends Model
     {
         return $this->hasMany(Tugas::class, 'jabatan_id');
     }
+
+    public function keputusanSeleksi(): HasMany
+    {
+        return $this->hasMany(KeputusanSeleksi::class, 'jabatan_id');
+    }
 }

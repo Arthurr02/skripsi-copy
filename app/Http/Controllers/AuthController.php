@@ -49,6 +49,11 @@ class AuthController extends Controller
             // =====================
             $nim = explode('@', $email)[0];
 
+            if (! preg_match('/^\d{9}@stis\.ac\.id$/i', $email)) {
+                return redirect('/')
+                    ->with('error', 'Mohon gunakan akun Google kampus dengan format NIM@stis.ac.id.');
+            }
+
             $mahasiswa = Mahasiswa::updateOrCreate(
                 ['nim' => $nim],
                 [

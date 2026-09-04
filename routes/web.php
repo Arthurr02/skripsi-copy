@@ -5,9 +5,11 @@ use App\Http\Controllers\Mahasiswa\DaftarRekrutmenController;
 use App\Http\Controllers\Mahasiswa\RekrutmenDiikutiController;
 use App\Http\Controllers\Mahasiswa\RiwayatPendaftaranController;
 use App\Http\Controllers\Organisasi\BukaRekrutmenController;
+use App\Http\Controllers\Rekrutmen\PanitiaRekrutmenController;
 use App\Http\Controllers\Rekrutmen\PendaftarController;
 use App\Http\Controllers\Rekrutmen\PengerjaanSeleksiController;
 use App\Http\Controllers\Rekrutmen\RiwayatRekrutmenController;
+use App\Http\Controllers\Rekrutmen\TutupRekrutmenController;
 use App\Http\Controllers\Rekrutmen\UpdateInformasiController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,8 +37,13 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
         Route::post('/inisiasi', [BukaRekrutmenController::class, 'storeInisiasi'])->name('store_inisiasi');
     });
 
-    Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
+    Route::middleware('rekrutmen_aktif')->prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/pendaftar', [PendaftarController::class, 'index'])->name('pendaftar');
+
+        Route::get('/panitia', [PanitiaRekrutmenController::class, 'index'])->name('panitia');
+        Route::post('/panitia', [PanitiaRekrutmenController::class, 'store'])->name('panitia.store');
+        Route::delete('/panitia/{panitia}', [PanitiaRekrutmenController::class, 'destroy'])->name('panitia.destroy');
+        Route::post('/tutup', TutupRekrutmenController::class)->name('tutup');
 
         // 1. Halaman Pilih Posisi
         Route::get('/seleksi', [PengerjaanSeleksiController::class, 'index'])->name('seleksi');
@@ -57,7 +64,8 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
         Route::get('/', [RiwayatRekrutmenController::class, 'index'])->name('index');
         Route::get('/{periode_id}', [RiwayatRekrutmenController::class, 'showPeriode'])->name('periode');
         Route::get('/{periode_id}/jabatan/{jabatan_id}', [RiwayatRekrutmenController::class, 'showJabatan'])->name('jabatan');
-        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}', [RiwayatRekrutmenController::class, 'showTahapan'])->name('tahapan');
+        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}', [PengerjaanSeleksiController::class, 'riwayatTahapanJabatan'])->name('tahapan');
+        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}/tugas/{tugasId}/export', [PengerjaanSeleksiController::class, 'exportJawabanExcelRiwayat'])->name('export');
     });
 });
 
@@ -76,7 +84,7 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
         ));
     })->name('dashboard');
 
-    Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
+    Route::middleware('rekrutmen_aktif')->prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/pendaftar', [PendaftarController::class, 'index'])->name('pendaftar');
         Route::get('/seleksi', [PengerjaanSeleksiController::class, 'index'])->name('seleksi');
         Route::get('/seleksi/tahapan/{tahapanId}/jabatan/{jabatanId}', [PengerjaanSeleksiController::class, 'jawabanTahapanJabatan'])->name('seleksi.jawaban');
@@ -93,7 +101,8 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
         Route::get('/', [RiwayatRekrutmenController::class, 'index'])->name('index');
         Route::get('/{periode_id}', [RiwayatRekrutmenController::class, 'showPeriode'])->name('periode');
         Route::get('/{periode_id}/jabatan/{jabatan_id}', [RiwayatRekrutmenController::class, 'showJabatan'])->name('jabatan');
-        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}', [RiwayatRekrutmenController::class, 'showTahapan'])->name('tahapan');
+        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}', [PengerjaanSeleksiController::class, 'riwayatTahapanJabatan'])->name('tahapan');
+        Route::get('/{periode_id}/jabatan/{jabatan_id}/tahapan/{tahapan_id}/tugas/{tugasId}/export', [PengerjaanSeleksiController::class, 'exportJawabanExcelRiwayat'])->name('export');
     });
 });
 

@@ -4,6 +4,7 @@
         'organisasi.dashboard' => [['Dashboard', 'organisasi.dashboard']],
         'organisasi.buka-rekrutmen.index' => [['Dashboard', 'organisasi.dashboard'], ['Buka Rekrutmen', null]],
         'organisasi.rekrutmen.update' => [['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini', null], ['Update Informasi', null]],
+        'organisasi.rekrutmen.panitia' => [['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini', null], ['Daftar Panitia', null]],
         'organisasi.rekrutmen.pendaftar' => [['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini', null], ['Daftar Peserta', null]],
         'organisasi.rekrutmen.seleksi' => [['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini', null], ['Pengerjaan Seleksi', null]],
         'organisasi.rekrutmen.seleksi.tahapan' => [['Dashboard', 'organisasi.dashboard'], ['Pengerjaan Seleksi', 'organisasi.rekrutmen.seleksi'], ['Tahapan Seleksi', null]],

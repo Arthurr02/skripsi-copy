@@ -65,11 +65,7 @@
                                 <h3
                                     class="text-sm font-bold text-slate-800 group-hover:text-blue-700 line-clamp-2"
                                 >
-                                    Periode Tahun {{
-                                        \Carbon\Carbon::parse(
-                                            $periode->created_at,
-                                        )->format('Y')
-                                    }}
+                                    Periode {{ $periode->tahun_periode }}
                                 </h3>
                                 <p class="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest group-hover:text-blue-500/70 transition-colors">
                                     {{

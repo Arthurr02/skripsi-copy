@@ -53,7 +53,7 @@
             @include ('layouts.sidebar')
 
             <div
-                class="flex-1 flex flex-col md:ml-64 transition-all duration-300"
+                class="min-w-0 flex-1 flex flex-col md:ml-64 transition-all duration-300"
             >
                 @include ('layouts.navigation')
 
@@ -67,7 +67,7 @@
                     </header>
                 @endisset
 
-                <main class="flex-1">
+                <main class="min-w-0 flex-1">
                     <div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
                         <x-breadcrumb />
                     </div>

@@ -1,5 +1,5 @@
 <x-app-layout>
-    <!-- Background Aksen Atas (Mencegah scroll horizontal dengan inset-x-0) -->
+    <!-- Background Aksen Atas (Mencegah scroll horizontal) -->
     <div
         class="absolute top-0 inset-x-0 h-[400px] overflow-hidden pointer-events-none -z-10"
     >
@@ -14,29 +14,27 @@
         ></div>
     </div>
 
+    <!-- MAIN CONTAINER (Sama persis dengan Buka Rekrutmen) -->
     <div
-        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+        class="w-full min-w-0 py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-8 sm:mb-10"
     >
-        <!-- HEADER SELARAS -->
+        <!-- HEADER -->
         <div
-            class="mb-8 pb-5 relative z-10 flex flex-col md:flex-row md:items-center justify-between"
+            class="mb-8 sm:mb-10 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 text-center sm:text-left"
         >
             <div>
-                <!-- Tipografi Solid Slate -->
                 <h2
-                    class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-800 mb-2.5 leading-tight"
+                    class="text-3xl sm:text-4xl font-extrabold text-slate-800 tracking-tight leading-tight"
                 >
                     Daftar Peserta
                 </h2>
-
-                <p class="text-sm font-normal text-slate-500 leading-relaxed">Memantau seluruh mahasiswa yang mengirimkan berkas pendaftaran pada periode aktif.</p>
+                <p class="text-sm text-slate-500 mt-2 leading-relaxed">Daftar peserta berisikan seluruh mahasiswa yang mendaftar rekrutmen dan status seleksinya.</p>
             </div>
 
             <!-- Info Periode -->
             <div
-                class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 flex flex-col md:items-start justify-betweenring-1 ring-slate-900/5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
+                class="w-full sm:w-auto bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-xl shrink-0 flex flex-col items-center sm:items-start justify-between shadow-sm"
             >
-                <!-- Kontainer Flex untuk Titik Biru dan Teks -->
                 <div class="flex items-center justify-center gap-2 mb-1.5">
                     <span class="relative flex h-2 w-2">
                         <span
@@ -48,38 +46,46 @@
                     </span>
                     <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
                 </div>
-                <!-- Angka Tahun -->
-                <p class="text-2xl font-bold text-blue-600 tracking-tight">
-                    {{ $periodeAktif?->tahun_periode ?? '-' }}
+                <p class="text-2xl font-extrabold text-blue-600 tracking-tight">
+                    {{
+                        $periodeAktif?->tahun_periode ??
+                            '-'
+                    }}
                 </p>
             </div>
         </div>
 
-        <!-- Tabel & Filter Container -->
+        <!-- KONTEN UTAMA (Format Card & Padding disamakan) -->
         <div
-            class="p-8 md:p-10 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden"
+            class="bg-white px-5 sm:px-10 py-6 sm:py-10 rounded-xl shadow-sm border border-slate-200 space-y-8"
         >
-            <!-- Area Filter (Nested Select, Checkbox Pilihan, & Auto-Submit) -->
-            <div class="bg-white border-slate-100">
+            <!-- BAGIAN 1: FILTER -->
+            <div>
+                <label
+                    class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
+                >
+                    Filter Posisi dan Jabatan Peserta
+                </label>
+                <p class="text-xs font-normal text-slate-500 mb-4">Gunakan filter untuk mempermudah melihat daftar peserta.</p>
+
                 <form
                     method="GET"
                     action="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
                     class="flex flex-col gap-4"
                 >
-                    <div class="flex flex-col md:flex-row gap-4 items-end">
-                        <!-- 1. Nested Filter Posisi & Jabatan -->
+                    <div
+                        class="flex flex-col md:flex-row gap-4 items-start md:items-stretch"
+                    >
+                        <!-- Pilihan Posisi & Jabatan -->
                         <div class="w-full md:w-2/5">
-                            <label
-                                class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
-                            >
-                                Pilihan Posisi & Jabatan
-                            </label>
                             <select
                                 name="filter_jabatan"
                                 onchange="this.form.submit()"
-                                class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors cursor-pointer"
+                                class="block w-full bg-slate-50 border border-slate-300 text-slate-600 text-sm font-bold focus:border-blue-600 focus:ring-0 rounded-lg py-3 px-4 transition-colors"
                             >
-                                <option value="">Semua Posisi & Jabatan</option>
+                                <option value="">
+                                    &mdash; Semua Posisi & Jabatan &mdash;
+                                </option>
                                 @if (isset($listJabatan))
                                     @php
                                         $groupedJabatan = collect($listJabatan)->groupBy(function ($item) {
@@ -87,8 +93,7 @@
                                         });
                                     @endphp
                                     @foreach ($groupedJabatan as $namaPosisi => $jabatans)
-                                        <!-- Menggunakan ikon profil orang pada label optgroup -->
-                                        <optgroup label="👤  {{ $namaPosisi }}">
+                                        <optgroup label="{{ $namaPosisi }}">
                                             @foreach ($jabatans as $jabatan)
                                                 <option
                                                     value="{{ $jabatan->id }}"
@@ -107,19 +112,16 @@
                             </select>
                         </div>
 
-                        <!-- 2. Filter Status Seleksi -->
+                        <!-- Status Seleksi -->
                         <div class="w-full md:w-2/5">
-                            <label
-                                class="block text-[10px] font-bold text-slate-500 uppercase mb-1.5"
-                            >
-                                Status Seleksi
-                            </label>
                             <select
                                 name="filter_status"
                                 onchange="this.form.submit()"
-                                class="w-full text-xs font-semibold border-slate-300 text-slate-700 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 transition-colors cursor-pointer"
+                                class="block w-full bg-slate-50 border border-slate-300 text-slate-600 text-sm font-bold focus:border-blue-600 focus:ring-0 rounded-lg py-3 px-4 transition-colors"
                             >
-                                <option value="">Semua Status</option>
+                                <option value="">
+                                    &mdash; Semua Status Seleksi &mdash;
+                                </option>
                                 <option
                                     value="Menunggu Seleksi"
                                     {{
@@ -162,10 +164,8 @@
                             </select>
                         </div>
 
-                        <!-- 3. Tombol Reset -->
-                        <div
-                            class="w-full md:w-auto h-[38px] flex items-center"
-                        >
+                        <!-- Tombol Reset -->
+                        <div class="w-full md:w-auto flex items-center">
                             @if (request()->anyFilled([
                                     'filter_jabatan',
                                     'filter_status',
@@ -173,27 +173,27 @@
                                 ]))
                                 <a
                                     href="{{ route($routePrefix . 'rekrutmen.pendaftar') }}"
-                                    class="w-full md:w-max h-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold px-5 rounded-lg transition-colors border border-slate-200 hover:border-red-200 flex items-center justify-center gap-1.5"
+                                    class="w-full md:w-max h-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-sm font-bold px-6 py-3 rounded-lg transition-colors border border-slate-200 hover:border-red-200 flex items-center justify-center gap-2 shadow-sm"
                                     title="Hapus semua filter"
                                 >
-                                    ✖ Reset
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    Reset
                                 </a>
                             @endif
                         </div>
                     </div>
 
-                    <!-- Baris Tambahan: Checkbox Pilihan 1 / Pilihan 2 -->
+                    <!-- Checkbox Pilihan -->
                     @if (request()->filled('filter_jabatan'))
                         <div
-                            class="flex items-center gap-6 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium"
+                            class="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100 mt-1"
                         >
                             <span
-                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                                class="text-xs font-normal text-slate-500 mr-2"
                                 >Cari Berdasarkan:</span
                             >
-
                             <label
-                                class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                                class="inline-flex items-center gap-2 cursor-pointer group"
                             >
                                 <input
                                     type="checkbox"
@@ -208,13 +208,15 @@
                                             ? 'checked'
                                             : ''
                                     }}
-                                    class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500 w-4 h-4"
+                                    class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 shadow-sm"
                                 />
-                                <span>Pilihan 1 Saja</span>
+                                <span
+                                    class="text-sm text-slate-700 font-bold group-hover:text-blue-600 transition-colors"
+                                    >Pilihan 1 Saja</span
+                                >
                             </label>
-
                             <label
-                                class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                                class="inline-flex items-center gap-2 cursor-pointer group"
                             >
                                 <input
                                     type="checkbox"
@@ -229,196 +231,239 @@
                                             ? 'checked'
                                             : ''
                                     }}
-                                    class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500 w-4 h-4"
+                                    class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 shadow-sm"
                                 />
-                                <span>Pilihan 2 Saja</span>
+                                <span
+                                    class="text-sm text-slate-700 font-bold group-hover:text-blue-600 transition-colors"
+                                    >Pilihan 2 Saja</span
+                                >
                             </label>
                         </div>
                     @endif
                 </form>
             </div>
 
-            <!-- Kartu Statistik -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 py-6">
-                <div
-                    class="bg-blue-50 py-3 px-5 rounded-lg flex items-center gap-4"
-                >
-                    <div class="text-blue-600 rounded-lg shrink-0">
-                        <svg class="size-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Pendaftar Masuk</p>
-                        <h3 class="text-2xl font-black text-slate-800 mt-0.5">
-                            {{ $totalPendaftar }} Peserta
-                        </h3>
+            <hr class="border-slate-100" />
+
+            <!-- BAGIAN 2: STATISTIK & TABEL PESERTA -->
+            <div>
+                <!-- Statistik -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
+                    <div
+                        class="bg-blue-50 border border-blue-100 py-4 px-5 rounded-xl flex items-center gap-4 shadow-sm"
+                    >
+                        <div
+                            class="text-blue-600 rounded-lg shrink-0 bg-white p-2.5 border border-blue-200"
+                        >
+                            <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-extrabold text-blue-500/80 uppercase tracking-wider">Total Pendaftar</p>
+                            <h3
+                                class="text-2xl font-black text-slate-800 mt-0.5"
+                            >
+                                {{ $totalPendaftar }}
+                                <span class="text-sm font-bold text-slate-500"
+                                    >Peserta</span
+                                >
+                            </h3>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Tabel Data -->
-            <div class="overflow-x-auto">
-                <table
-                    class="w-full text-left border-collapse text-sm min-w-[900px]"
+                <!-- Desain Tabel Diselaraskan dengan Desain Form Panitia -->
+                <div
+                    class="overflow-hidden border border-slate-200 rounded-lg bg-white"
                 >
-                    <thead>
-                        <tr
-                            class="bg-gray-50 border border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider"
+                    <div class="max-w-full overflow-x-auto">
+                        <table
+                            class="w-full text-left border-collapse min-w-[900px]"
                         >
-                            <th class="px-5 py-4 text-center w-12">No</th>
-                            <th class="px-5 py-4">Waktu Daftar</th>
-                            <th class="px-5 py-4">NIM</th>
-                            <th class="px-5 py-4">Nama Lengkap</th>
-                            <th class="px-5 py-4">Pilihan Jabatan 1</th>
-                            <th class="px-5 py-4">Pilihan Jabatan 2</th>
-                            <th class="px-5 py-4">Status Seleksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-700">
-                        @forelse ($daftarPeserta as $index => $pendaftar)
-                            <tr
-                                class="hover:bg-blue-50/50 transition-colors border"
-                            >
-                                <td
-                                    class="px-5 py-4 text-center font-bold text-slate-400 text-xs"
+                            <thead>
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-200"
                                 >
-                                    {{
-                                        $daftarPeserta->firstItem() +
-                                            $index
-                                    }}
-                                </td>
-                                <td
-                                    class="px-5 py-4 text-xs font-bold text-slate-600 whitespace-nowrap"
-                                >
-                                    {{
-                                        \Carbon\Carbon::parse(
-                                            $pendaftar->created_at,
-                                        )->translatedFormat('d M Y')
-                                    }}
-                                    <span
-                                        class="block text-[10px] font-medium text-slate-400 mt-0.5"
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide text-center w-12 border-r border-slate-200/50"
                                     >
-                                        {{
-                                            \Carbon\Carbon::parse(
-                                                $pendaftar->created_at,
-                                            )->format('H:i')
-                                        }} WIB
-                                    </span>
-                                </td>
-                                <td
-                                    class="px-5 py-4 font-mono text-xs font-bold text-slate-600"
-                                >
-                                    {{ $pendaftar->nim }}
-                                </td>
-                                <td
-                                    class="px-5 py-4 font-semibold text-slate-900 text-sm"
-                                >
-                                    {{
-                                        $pendaftar->mahasiswa->nama_lengkap ??
-                                            '-'
-                                    }}
-                                </td>
-
-                                <!-- Kolom Pilihan Jabatan 1 (Format: Posisi | Jabatan) -->
-                                <td class="px-5 py-4">
-                                    @php
-                                        $jab1 = $pendaftar->pilihanJabatan1;
-                                        if ($jab1) {
-                                            $namaPos1 = $jab1->nama_posisi ?? '';
-                                            $namaJab1 = $jab1->nama_jabatan ?? '';
-                                            $teksJabatan1 = $namaPos1 ? "{$namaPos1} | {$namaJab1}" : $namaJab1;
-                                            $badgeClass1 = 'bg-blue-50 text-blue-700 border-blue-200';
-                                        } else {
-                                            $teksJabatan1 = 'Tidak Memilih';
-                                            $badgeClass1 = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                                        }
-                                    @endphp
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass1 }}"
+                                        No
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide border-r border-slate-200/50"
                                     >
-                                        {{ $teksJabatan1 }}
-                                    </span>
-                                </td>
-
-                                <!-- Kolom Pilihan Jabatan 2 (Format: Posisi | Jabatan) -->
-                                <td class="px-5 py-4">
-                                    @php
-                                        $jab2 = $pendaftar->pilihanJabatan2;
-                                        if ($jab2) {
-                                            $namaPos2 = $jab2->nama_posisi ?? '';
-                                            $namaJab2 = $jab2->nama_jabatan ?? '';
-                                            $teksJabatan2 = $namaPos2 ? "{$namaPos2} | {$namaJab2}" : $namaJab2;
-                                            $badgeClass2 = 'bg-indigo-50 text-indigo-700 border-indigo-200';
-                                        } else {
-                                            $teksJabatan2 = 'Tidak Memilih';
-                                            $badgeClass2 = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                                        }
-                                    @endphp
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass2 }}"
+                                        Waktu Daftar
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide border-r border-slate-200/50"
                                     >
-                                        {{ $teksJabatan2 }}
-                                    </span>
-                                </td>
-
-                                <td class="px-5 py-4">
-                                    @php
-                                        $status = $pendaftar->status_seleksi ?? 'Menunggu Seleksi';
-                                        $badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
-
-                                        if (
-                                            stripos($status, 'lulus') !== false ||
-                                            stripos($status, 'lolos') !== false
-                                        ) {
-                                            $badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                                        } elseif (
-                                            stripos($status, 'tidak') !== false ||
-                                            stripos($status, 'gagal') !== false
-                                        ) {
-                                            $badgeClass = 'bg-red-50 text-red-700 border-red-200';
-                                        } elseif (stripos($status, 'menunggu') !== false) {
-                                            $badgeClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                                        }
-                                    @endphp
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass }}"
+                                        NIM Mahasiswa
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide border-r border-slate-200/50"
                                     >
-                                        {{ $status }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td
-                                    colspan="7"
-                                    class="text-center py-16 text-slate-400 bg-white"
-                                >
-                                    <div
-                                        class="flex flex-col items-center justify-center"
+                                        Nama Lengkap
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide border-r border-slate-200/50"
                                     >
-                                        <span
-                                            class="text-6xl block text-slate-300"
+                                        Pilihan 1
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide border-r border-slate-200/50"
+                                    >
+                                        Pilihan 2
+                                    </th>
+                                    <th
+                                        class="px-5 py-3 text-xs font-bold text-slate-600 tracking-wide"
+                                    >
+                                        Status Seleksi
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($daftarPeserta as $index => $pendaftar)
+                                    <tr
+                                        class="hover:bg-slate-50/50 transition-colors align-top"
+                                    >
+                                        <td
+                                            class="px-5 py-4 text-center text-xs font-bold text-slate-400"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                                                <path d="M0 0h24v24H0z" fill="none" />
-                                                <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0s.41-1.08 0-1.49zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14" />
-                                            </svg>
-                                        </span>
-                                        <p class="font-bold text-slate-500 text-sm mt-3">Data Tidak Ditemukan</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                                            {{
+                                                $daftarPeserta->firstItem() +
+                                                    $index
+                                            }}
+                                        </td>
+                                        <td
+                                            class="px-5 py-4 text-xs font-bold text-slate-700 whitespace-nowrap"
+                                        >
+                                            {{
+                                                \Carbon\Carbon::parse(
+                                                    $pendaftar->created_at,
+                                                )->translatedFormat('d M Y')
+                                            }}
+                                            <span
+                                                class="block text-[10px] font-normal text-slate-500 mt-0.5"
+                                            >
+                                                {{
+                                                    \Carbon\Carbon::parse(
+                                                        $pendaftar->created_at,
+                                                    )->format('H:i')
+                                                }} WIB
+                                            </span>
+                                        </td>
+                                        <td
+                                            class="px-5 py-4 text-sm font-bold font-mono text-slate-800"
+                                        >
+                                            {{ $pendaftar->nim }}
+                                        </td>
+                                        <td
+                                            class="px-5 py-4 text-sm font-semibold text-slate-600"
+                                        >
+                                            {{
+                                                $pendaftar->mahasiswa->nama_lengkap ??
+                                                    '-'
+                                            }}
+                                        </td>
+
+                                        <!-- Kolom Pilihan Jabatan 1 -->
+                                        <td class="px-5 py-4">
+                                            @php
+                                                $jab1 = $pendaftar->pilihanJabatan1;
+                                                if ($jab1) {
+                                                    $namaPos1 = $jab1->nama_posisi ?? '';
+                                                    $namaJab1 = $jab1->nama_jabatan ?? '';
+                                                    $teksJabatan1 = $namaPos1 ? "{$namaPos1} | {$namaJab1}" : $namaJab1;
+                                                    $badgeClass1 = 'bg-slate-100 border-slate-300 text-slate-700';
+                                                } else {
+                                                    $teksJabatan1 = 'Tidak Memilih';
+                                                    $badgeClass1 = 'bg-white border-dashed border-slate-300 text-slate-400';
+                                                }
+                                            @endphp
+                                            <span
+                                                class="inline-flex items-center px-3 py-1.5 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass1 }} whitespace-nowrap"
+                                            >
+                                                {{ $teksJabatan1 }}
+                                            </span>
+                                        </td>
+
+                                        <!-- Kolom Pilihan Jabatan 2 -->
+                                        <td class="px-5 py-4">
+                                            @php
+                                                $jab2 = $pendaftar->pilihanJabatan2;
+                                                if ($jab2) {
+                                                    $namaPos2 = $jab2->nama_posisi ?? '';
+                                                    $namaJab2 = $jab2->nama_jabatan ?? '';
+                                                    $teksJabatan2 = $namaPos2 ? "{$namaPos2} | {$namaJab2}" : $namaJab2;
+                                                    $badgeClass2 = 'bg-slate-100 border-slate-300 text-slate-700';
+                                                } else {
+                                                    $teksJabatan2 = 'Tidak Memilih';
+                                                    $badgeClass2 = 'bg-white border-dashed border-slate-300 text-slate-400';
+                                                }
+                                            @endphp
+                                            <span
+                                                class="inline-flex items-center px-3 py-1.5 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass2 }} whitespace-nowrap"
+                                            >
+                                                {{ $teksJabatan2 }}
+                                            </span>
+                                        </td>
+
+                                        <!-- Status Seleksi -->
+                                        <td class="px-5 py-4">
+                                            @php
+                                                $status = $pendaftar->status_seleksi ?? 'Menunggu Seleksi';
+                                                $badgeClass = 'bg-slate-50 text-slate-600 border-slate-200';
+
+                                                if (
+                                                    stripos($status, 'lulus') !== false ||
+                                                    stripos($status, 'lolos') !== false
+                                                ) {
+                                                    $badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                                } elseif (
+                                                    stripos($status, 'tidak') !== false ||
+                                                    stripos($status, 'gagal') !== false
+                                                ) {
+                                                    $badgeClass = 'bg-red-50 text-red-700 border-red-200';
+                                                } elseif (stripos($status, 'menunggu') !== false) {
+                                                    $badgeClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                                                }
+                                            @endphp
+                                            <span
+                                                class="inline-flex items-center px-3 py-1.5 rounded-md text-[11px] font-bold border shadow-sm {{ $badgeClass }} whitespace-nowrap"
+                                            >
+                                                {{ $status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td
+                                            colspan="7"
+                                            class="text-center py-20 bg-slate-50/50"
+                                        >
+                                            <div
+                                                class="flex flex-col items-center justify-center"
+                                            >
+                                                <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                                </svg>
+                                                <p class="font-bold text-slate-500 text-sm">Data Tidak Ditemukan</p>
+                                                <p class="font-normal text-slate-400 text-xs mt-1">Belum ada peserta yang sesuai dengan filter.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- Navigasi Pagination -->
             @if (method_exists($daftarPeserta, 'hasPages') && $daftarPeserta->hasPages())
-                <div class="p-4 border-t border-slate-100 bg-slate-50/80">
-                    {{ $daftarPeserta->links() }}
-                </div>
+                <hr class="border-slate-100" />
+                <div class="pt-2">{{ $daftarPeserta->links() }}</div>
             @endif
         </div>
     </div>

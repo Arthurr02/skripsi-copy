@@ -24,7 +24,10 @@ class PendaftarController extends Controller
             $nimPanitia = Auth::user()->nim;
 
             // Diperbaiki: Hapus panitia_rekrutmen karena kolom tidak ada di DB
-            $kepanitiaan = Panitia::where('nim', $nimPanitia)
+            $kepanitiaan = Panitia::query()
+                ->with('periode')
+                ->where('nim', $nimPanitia)
+                ->whereHas('periode', fn ($query) => $query->whereIn('status_aktif', [1, 2]))
                 ->latest()
                 ->first();
 
@@ -32,7 +35,7 @@ class PendaftarController extends Controller
                 abort(403, 'Akses ditolak. Anda bukan panitia yang sah.');
             }
 
-            $periodePanitia = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+            $periodePanitia = $kepanitiaan->periode;
             abort_unless($periodePanitia, 403, 'Periode rekrutmen panitia tidak ditemukan.');
             $organisasiId = $periodePanitia->organisasi_id;
         }
@@ -43,25 +46,13 @@ class PendaftarController extends Controller
             ->latest()
             ->first();
 
-        if (! $periodeAktif) {
-            return view('rekrutmen.pendaftar.index', [
-                'daftarPeserta' => collect(),
-                'totalPendaftar' => 0,
-                'periodeAktif' => null,
-                'listJabatan' => collect(),
-                'routePrefix' => Auth::guard('organisasi')->check() ? 'organisasi.' : 'panitia.',
-            ]);
-        }
+        abort_unless($periodeAktif, 404);
 
-        // Ambil daftar jabatan untuk filter Frontend
-        // KODE BARU (Diperbarui dengan relasi posisi)
-        // UBAH DARI INI:
-        // $listJabatan = Jabatan::with('posisi')
-        //     ->where('periode_rekrutmen_id', $periodeAktif->id)
-        //     ->get();
-
-        // MENJADI SEPERTI INI:
-        $listJabatan = Jabatan::where('periode_rekrutmen_id', $periodeAktif->id)->get();
+        $listJabatan = Jabatan::query()
+            ->where('periode_rekrutmen_id', $periodeAktif->id)
+            ->orderBy('nama_posisi')
+            ->orderBy('nama_jabatan')
+            ->get();
 
         // 🌟 3. SUSUN KUERI DASAR PENDAFTAR
         // Diperbaiki: Karena tabel pendaftaran tidak punya periode_rekrutmen_id,
@@ -76,53 +67,52 @@ class PendaftarController extends Controller
             })
             ->select('pendaftaran.*'); // Sesuai nama tabel di DB (bukan pendaftarans)
 
-        // 🌟 4. LOGIKA FILTER: JABATAN & CHECKBOX PILIHAN
-        if ($request->filled('filter_jabatan')) {
-            $jabatanId = $request->filter_jabatan;
-            $tipePilihan = $request->input('pilihan_tipe', []); // Array checkbox [1, 2]
+        $statusSeleksiTersedia = (clone $query)
+            ->whereNotNull('status_seleksi')
+            ->where('status_seleksi', '!=', '')
+            ->distinct()
+            ->orderBy('status_seleksi')
+            ->pluck('status_seleksi')
+            ->prepend('Menunggu Seleksi')
+            ->unique()
+            ->values();
 
-            $query->where(function ($q) use ($jabatanId, $tipePilihan) {
-                // Jika user mencentang keduanya atau tidak mencentang sama sekali (default perilaku awal)
-                if (empty($tipePilihan) || (in_array('1', $tipePilihan) && in_array('2', $tipePilihan))) {
-                    $q->where('jabatan_1_id', $jabatanId)
-                        ->orWhere('jabatan_2_id', $jabatanId);
-                } else {
-                    // Jika hanya centang Pilihan 1 saja
-                    if (in_array('1', $tipePilihan)) {
-                        $q->orWhere('jabatan_1_id', $jabatanId);
-                    }
-                    // Jika hanya centang Pilihan 2 saja
-                    if (in_array('2', $tipePilihan)) {
-                        $q->orWhere('jabatan_2_id', $jabatanId);
-                    }
+        if ($request->filled('filter_jabatan')) {
+            $jabatanId = (int) $request->input('filter_jabatan');
+            $pilihanTipe = collect($request->input('pilihan_tipe', ['1', '2']))
+                ->intersect(['1', '2'])
+                ->values();
+
+            if ($pilihanTipe->isEmpty()) {
+                $pilihanTipe = collect(['1', '2']);
+            }
+
+            $query->where(function ($query) use ($jabatanId, $pilihanTipe): void {
+                if ($pilihanTipe->contains('1')) {
+                    $query->orWhere('jabatan_1_id', $jabatanId);
+                }
+
+                if ($pilihanTipe->contains('2')) {
+                    $query->orWhere('jabatan_2_id', $jabatanId);
                 }
             });
         }
 
-        // 🌟 5. LOGIKA FILTER: STATUS SELEKSI
         if ($request->filled('filter_status')) {
-            $status = $request->filter_status;
+            $status = $request->string('filter_status')->toString();
 
-            if ($status == 'Menunggu Seleksi') {
-                $query->where(function ($q) {
-                    $q->whereNull('status_seleksi')
-                        ->orWhere('status_seleksi', 'Menunggu Seleksi')
-                        ->orWhere('status_seleksi', '');
+            if ($status === 'Menunggu Seleksi') {
+                $query->where(function ($query): void {
+                    $query->whereNull('status_seleksi')
+                        ->orWhere('status_seleksi', '')
+                        ->orWhere('status_seleksi', 'Menunggu Seleksi');
                 });
             } else {
                 $query->where('status_seleksi', $status);
             }
         }
 
-        // 🌟 6. LOGIKA SORTING
-        if ($request->sort === 'nama') {
-            // Diperbaiki: Mahasiswa menggunakan 'nim' sebagai primary key
-            $query->join('mahasiswa', 'pendaftaran.nim', '=', 'mahasiswa.nim')
-                ->orderBy('mahasiswa.nama_lengkap', 'asc');
-        } else {
-            // Default: Terbaru
-            $query->latest('pendaftaran.created_at');
-        }
+        $query->latest('pendaftaran.created_at');
 
         // 🌟 7. EKSEKUSI KUERI & PAGINATION
         $daftarPeserta = $query->paginate(25)->withQueryString();
@@ -136,6 +126,7 @@ class PendaftarController extends Controller
             'totalPendaftar',
             'periodeAktif',
             'listJabatan',
+            'statusSeleksiTersedia',
             'routePrefix'
         ));
     }

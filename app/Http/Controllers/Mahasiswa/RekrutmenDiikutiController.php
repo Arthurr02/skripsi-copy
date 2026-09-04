@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
 use App\Models\Jabatan;
+use App\Models\KeputusanSeleksi;
 use App\Models\Organisasi;
 // Impor Semua Model yang Diperlukan
 use App\Models\Pendaftaran;
@@ -13,6 +14,7 @@ use App\Models\Tahapan;
 use App\Models\Tugas;
 use Carbon\Carbon; // 🌟 DITAMBAHKAN: Model Tugas
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -87,10 +89,10 @@ class RekrutmenDiikutiController extends Controller
 
         $avatarUrl = '';
         if ($organisasi) {
-            if (!empty($organisasi->avatar_google)) {
+            if (! empty($organisasi->avatar_google)) {
                 $avatarUrl = str_replace('http://', 'https://', $organisasi->avatar_google);
-            } elseif (!empty($organisasi->lampiran_logo)) {
-                $avatarUrl = asset('storage/' . $organisasi->lampiran_logo);
+            } elseif (! empty($organisasi->lampiran_logo)) {
+                $avatarUrl = asset('storage/'.$organisasi->lampiran_logo);
             }
         }
 
@@ -99,12 +101,20 @@ class RekrutmenDiikutiController extends Controller
         $bannerPath = is_array($bannerArray) && count($bannerArray) > 0 ? $bannerArray[0] : null;
 
         $namaJabatanUtama = $jabatanUtama->nama_jabatan ?? 'Jabatan Tidak Diketahui';
-        $namaPosisiUtama = (!empty($jabatanUtama->nama_posisi) && $jabatanUtama->nama_posisi !== '-')
+        $namaPosisiUtama = (! empty($jabatanUtama->nama_posisi) && $jabatanUtama->nama_posisi !== '-')
             ? $jabatanUtama->nama_posisi
             : 'Tanpa Divisi Khusus';
 
         // 3. Ambil dan Format Data Tahapan (Tanpa membebani Blade)
         $now = now();
+        $keputusanPeserta = KeputusanSeleksi::query()
+            ->with('tahapan:id,periode_rekrutmen_id,urutan_tahapan')
+            ->where('pendaftaran_id', $pendaftaran->id)
+            ->where('jabatan_id', $pendaftaran->jabatan_1_id)
+            ->get();
+        $keputusanPerTahapan = $keputusanPeserta->keyBy('tahapan_id');
+        $keputusanGagal = $keputusanPeserta->where('keputusan', 'tidak_lolos');
+
         $tahapans = Tahapan::with([
             'tugas' => function ($query) use ($pendaftaran) {
                 $query->where('jabatan_id', $pendaftaran->jabatan_1_id);
@@ -113,7 +123,7 @@ class RekrutmenDiikutiController extends Controller
             ->where('periode_rekrutmen_id', $jabatanUtama->periode_rekrutmen_id ?? 0)
             ->orderBy('urutan_tahapan', 'asc')
             ->get()
-            ->map(function ($tahapan) use ($now) {
+            ->map(function ($tahapan) use ($now, $keputusanPerTahapan, $keputusanGagal) {
                 // Konversi dan injeksi properti waktu langsung ke objek
                 $mulai = Carbon::parse($tahapan->waktu_mulai);
                 $berakhir = Carbon::parse($tahapan->waktu_berakhir);
@@ -124,6 +134,12 @@ class RekrutmenDiikutiController extends Controller
                 $tahapan->is_active = $mulai->lte($now) && $berakhir->gte($now);
                 $tahapan->is_future = $mulai->isFuture();
                 $tahapan->is_waktu_tunggal = $mulai->equalTo($berakhir);
+
+                $keputusanTahapan = $keputusanPerTahapan->get($tahapan->id);
+                $tahapan->is_dinyatakan_gagal = $keputusanTahapan?->keputusan === 'tidak_lolos';
+                $tahapan->dikunci_karena_tidak_lulus = ! $tahapan->is_dinyatakan_gagal
+                    && $keputusanGagal->contains(fn ($keputusan) => $keputusan->tahapan
+                        && $keputusan->tahapan->urutan_tahapan < $tahapan->urutan_tahapan);
 
                 // Parsing Lampiran Pedoman
                 $pedomanArray = is_string($tahapan->lampiran_tahapan) ? json_decode($tahapan->lampiran_tahapan, true) : $tahapan->lampiran_tahapan;
@@ -193,7 +209,7 @@ class RekrutmenDiikutiController extends Controller
             $waktuBerakhir,
         );
 
-        if (!$dapatDikerjakan && !$pengumpulan) {
+        if (! $dapatDikerjakan && ! $pengumpulan) {
             return redirect()->route('mahasiswa.rekrutmen.diikuti.tahapan', $pendaftaran->id)
                 ->with('error', 'Tugas ini tidak dapat dikerjakan karena belum dibuka atau waktu pengumpulan telah berakhir.');
         }
@@ -208,7 +224,7 @@ class RekrutmenDiikutiController extends Controller
 
         // 5. Proses JSON Jawaban Mahasiswa (Disesuaikan dengan DB: lampiran_jawaban)
         $jawabanSebelumnya = [];
-        if ($pengumpulan && !empty($pengumpulan->lampiran_jawaban)) {
+        if ($pengumpulan && ! empty($pengumpulan->lampiran_jawaban)) {
             $parsedJawaban = is_string($pengumpulan->lampiran_jawaban)
                 ? json_decode($pengumpulan->lampiran_jawaban, true)
                 : $pengumpulan->lampiran_jawaban;
@@ -255,7 +271,7 @@ class RekrutmenDiikutiController extends Controller
 
         // Ambil data JSON lama agar tidak terhapus saat update
         $existingJawaban = [];
-        if (!empty($pengumpulan->lampiran_jawaban)) {
+        if (! empty($pengumpulan->lampiran_jawaban)) {
             $existingJawaban = is_string($pengumpulan->lampiran_jawaban)
                 ? json_decode($pengumpulan->lampiran_jawaban, true)
                 : $pengumpulan->lampiran_jawaban;
@@ -291,7 +307,7 @@ class RekrutmenDiikutiController extends Controller
                 : $berkasLama;
 
             foreach ($this->ambilBerkasForm($request, $nama, $jumlahBidangFile === 1) as $file) {
-                    $berkasDipertahankan[] = $file->store('rekrutmen/jawaban-form', 'public');
+                $berkasDipertahankan[] = $file->store('rekrutmen/jawaban-form', 'public');
             }
 
             foreach (array_diff($berkasLama, $berkasDipertahankan) as $berkasDihapus) {
@@ -374,14 +390,32 @@ class RekrutmenDiikutiController extends Controller
     {
         $jabatan = $pendaftaran->pilihanJabatan1;
 
-        return Tugas::with('tahapan')
+        $tugas = Tugas::with('tahapan')
             ->whereKey($tugasId)
             ->where('jabatan_id', $pendaftaran->jabatan_1_id)
-            ->whereHas('tahapan', fn($query) => $query->where(
+            ->whereHas('tahapan', fn ($query) => $query->where(
                 'periode_rekrutmen_id',
                 $jabatan->periode_rekrutmen_id,
             ))
             ->firstOrFail();
+
+        $this->pastikanPesertaMasihBerhakMengerjakan($pendaftaran, $tugas);
+
+        return $tugas;
+    }
+
+    private function pastikanPesertaMasihBerhakMengerjakan(Pendaftaran $pendaftaran, Tugas $tugas): void
+    {
+        $gagalTahapanIniAtauSebelumnya = KeputusanSeleksi::query()
+            ->where('pendaftaran_id', $pendaftaran->id)
+            ->where('jabatan_id', $pendaftaran->jabatan_1_id)
+            ->where('keputusan', 'tidak_lolos')
+            ->whereHas('tahapan', fn ($query) => $query
+                ->where('periode_rekrutmen_id', $tugas->tahapan->periode_rekrutmen_id)
+                ->where('urutan_tahapan', '<=', $tugas->tahapan->urutan_tahapan))
+            ->exists();
+
+        abort_unless(! $gagalTahapanIniAtauSebelumnya, 403, 'Anda tidak dinyatakan lulus pada tahapan seleksi sebelumnya.');
     }
 
     private function pastikanTugasSedangDibuka(Tugas $tugas): void
@@ -389,7 +423,7 @@ class RekrutmenDiikutiController extends Controller
         $mulai = Carbon::parse($tugas->tahapan->waktu_mulai);
         $berakhir = Carbon::parse($tugas->tahapan->waktu_berakhir);
 
-        if (!now()->between($mulai, $berakhir)) {
+        if (! now()->between($mulai, $berakhir)) {
             throw ValidationException::withMessages([
                 'tugas' => 'Tugas hanya dapat dikirim selama periode pengumpulan berlangsung.',
             ]);
@@ -406,7 +440,7 @@ class RekrutmenDiikutiController extends Controller
 
         foreach ($struktur as $indeks => $item) {
             $nama = $this->namaBidangForm($item, $indeks);
-            $aturanBidang = !empty($item['required']) ? ['required'] : ['nullable'];
+            $aturanBidang = ! empty($item['required']) ? ['required'] : ['nullable'];
             $tipe = $item['tipe'] ?? 'text_short';
 
             if ($tipe === 'file') {
@@ -415,7 +449,7 @@ class RekrutmenDiikutiController extends Controller
                     ? array_intersect($berkasLama, (array) $request->input("jawaban_file_pertahankan.{$nama}", []))
                     : $berkasLama;
                 $berkasMasuk = $this->ambilBerkasForm($request, $nama, $jumlahBidangFile === 1);
-                if (empty($berkasDipertahankan) && empty($berkasMasuk) && !empty($item['required'])) {
+                if (empty($berkasDipertahankan) && empty($berkasMasuk) && ! empty($item['required'])) {
                     throw ValidationException::withMessages([
                         'jawaban_file.'.$nama => 'Berkas '.($item['label'] ?? 'jawaban').' wajib diunggah.',
                     ]);
@@ -432,6 +466,7 @@ class RekrutmenDiikutiController extends Controller
                         'berkas.max' => 'Ukuran setiap berkas '.($item['label'] ?? 'jawaban').' maksimal 5 MB.',
                     ])->validate();
                 }
+
                 continue;
             }
 
@@ -447,11 +482,11 @@ class RekrutmenDiikutiController extends Controller
                 $aturanBidang[] = 'string';
             }
 
-            $aturan['jawaban_form.' . $nama] = $aturanBidang;
-            $pesan['jawaban_form.' . $nama . '.required'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' wajib diisi.';
-            $pesan['jawaban_form.' . $nama . '.numeric'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa angka.';
-            $pesan['jawaban_form.' . $nama . '.email'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa email yang valid.';
-            $pesan['jawaban_form.' . $nama . '.date'] = 'Isian ' . ($item['label'] ?? 'tugas') . ' harus berupa tanggal yang valid.';
+            $aturan['jawaban_form.'.$nama] = $aturanBidang;
+            $pesan['jawaban_form.'.$nama.'.required'] = 'Isian '.($item['label'] ?? 'tugas').' wajib diisi.';
+            $pesan['jawaban_form.'.$nama.'.numeric'] = 'Isian '.($item['label'] ?? 'tugas').' harus berupa angka.';
+            $pesan['jawaban_form.'.$nama.'.email'] = 'Isian '.($item['label'] ?? 'tugas').' harus berupa email yang valid.';
+            $pesan['jawaban_form.'.$nama.'.date'] = 'Isian '.($item['label'] ?? 'tugas').' harus berupa tanggal yang valid.';
         }
 
         if ($tugas->tipe_jawaban_tugas === 'form' || $tugas->tipe_tugas === 'pengisian_form') {
@@ -563,7 +598,7 @@ class RekrutmenDiikutiController extends Controller
 
         return collect((array) $berkas)
             ->flatten()
-            ->filter(fn ($file) => $file instanceof \Illuminate\Http\UploadedFile && $file->isValid())
+            ->filter(fn ($file) => $file instanceof UploadedFile && $file->isValid())
             ->values()
             ->all();
     }
