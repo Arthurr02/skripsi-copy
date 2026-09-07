@@ -27,7 +27,7 @@
                 >
                     Daftar Rekrutmen
                 </h2>
-                <p class="text-sm text-slate-500 mt-1">Temukan dan ikuti rekrutmen kepanitiaan atau organisasi tingkat kampus yang sedang berlangsung saat ini.</p>
+                <p class="text-sm text-slate-500 mt-1">Daftarkan dirimu menjadi bagian dari sebuah organisasi sekarang!</p>
             </div>
         </div>
         @if ($rekrutmenAktif->isEmpty())
@@ -36,8 +36,8 @@
                 class="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center text-center shadow-sm"
             >
                 <div class="p-4 bg-blue-50 text-blue-600 rounded-full mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    <svg class="mx-auto mb-4 h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.8 6.808a2.25 2.25 0 0 0-2.15-1.558H6.35a2.25 2.25 0 0 0-2.15 1.558L2.35 13.177a2.25 2.25 0 0 0-.1.661Z" />
                     </svg>
                 </div>
                 <h3 class="text-lg font-bold text-slate-800 mb-1">
@@ -148,77 +148,87 @@
                                         <div
                                             class="flex min-w-0 h-7 items-center"
                                         >
-                                            <p class="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider truncate">
+                                            <p class="text-[13px] font-extrabold text-blue-600 tracking-wide truncate">
                                                 {{ $namaOrganisasi }}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Judul Slogan Rekrutmen -->
-                                <h3
-                                    class="pt-8 text-base font-extrabold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors my-2 line-clamp-2"
-                                >
-                                    {{
-                                        $rekrutmen->slogan ??
-                                            'Penerimaan Anggota Baru Tahun ' .
-                                                \Carbon\Carbon::parse($rekrutmen->created_at)->format(
-                                                    'Y',
-                                                )
-                                    }} (Periode
-                                    <span
-                                        class="text-blue-600"
-                                        >{{ $rekrutmen->tahun_periode }}</span
-                                    >)
-                                </h3>
+                                <!-- Detail Organisasi -->
+                                <div class="mt-8 mb-3">
+                                    <h3
+                                        class="text-base font-extrabold text-slate-800 leading-snug transition-colors line-clamp-2"
+                                    >
+                                        {{
+                                            $rekrutmen->slogan ??
+                                                'Penerimaan Anggota Baru Tahun ' .
+                                                    \Carbon\Carbon::parse($rekrutmen->created_at)->format(
+                                                        'Y',
+                                                    )
+                                        }}
+                                    </h3>
+                                    <p class="mt-1 text-[11px] font-bold text-blue-600">Periode {{ $rekrutmen->tahun_periode }}</p>
+                                </div>
 
-                                <!-- Deskripsi Ringkas (Max 2 Baris) -->
-                                <p class="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-4">
+                                <!-- Deskripsi karena tidak ada jabatan -->
+                                <p class="mb-2 line-clamp-2 text-xs leading-relaxed font-bold text-slate-500">
                                     {{
-                                        $rekrutmen->deskripsi ??
-                                            'Mari bergabung bersama kami untuk mengembangkan potensi dan berkontribusi secara nyata.'
+                                        $rekrutmen->deskripsi ?:
+                                            'Informasi rekrutmen yang telah ditutup dapat dilihat melalui halaman detail.'
                                     }}
                                 </p>
-                            </div>
 
-                            <!-- 3. Tombol Aksi Sejajar (Side-by-Side: Menghemat Ruang Vertikal) -->
-                            <div
-                                class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 mt-auto"
-                            >
-                                <a
-                                    href="{{ route('mahasiswa.rekrutmen.info', $rekrutmen->id) }}"
-                                    class="flex items-center justify-center py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors text-center"
+                                <!-- 3. Tombol Aksi Sejajar (Side-by-Side: Menghemat Ruang Vertikal) -->
+                                <div
+                                    class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100"
                                 >
-                                    Detail Info
-                                </a>
-                                @if ($sudahTerdaftar)
-                                    <button
-                                        type="button"
-                                        data-status-pendaftaran="sudah-terdaftar"
-                                        class="flex items-center justify-center py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
+                                    <a
+                                        href="{{ route('mahasiswa.rekrutmen.info', $rekrutmen->id) }}"
+                                        class="w-full flex justify-center py-2 px-4 border border-slate-300 bg-white text-xs font-bold text-slate-700 rounded-md hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-sm gap-1.5 items-center"
                                     >
-                                        Terdaftar
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                                    </button>
-                                @else
+                                        Detail Info
+                                    </a>
+                                    @if ($sudahTerdaftar)
+                                        <button
+                                            type="button"
+                                            data-status-pendaftaran="sudah-terdaftar"
+                                            class="flex items-center justify-center py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
+                                        >
+                                            Terdaftar
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                        </button>
+                                @elseif ($rekrutmen->pendaftaran_terbuka)
                                     <a
                                         href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
                                         class="flex items-center justify-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
                                     >
                                         Daftar
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                    </a>
-                                @endif
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                        </a>
+                                    @else
+                                    <button
+                                            type="button"
+                                            disabled
+                                            class="flex cursor-not-allowed items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-center text-xs font-bold text-slate-400"
+                                    >
+                                        {{ $rekrutmen->pendaftaran_sudah_berakhir ? 'Pendaftaran Ditutup' : 'Pendaftaran Belum Dibuka' }}
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                                            </svg>
+                                        </button>
+                                    @endif
+                                </div>
                             </div>
                         </div>
-                    </div>
+
                 @endforeach
             </div>
         @endif
     </div>
 </x-app-layout>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<x-sweet-alert />
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const premiumSwal = Swal.mixin({
@@ -247,7 +257,7 @@
         @if (session('error_server'))
         premiumSwal.fire({
             icon: 'error',
-            title: 'Akses Ditolak',
+            title: 'Gagal Melakukan Pendaftaran',
             text: '{{
         session(
             'error_server',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Rekrutmen;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateRecruitmentInformationRequest;
 use App\Models\Jabatan;
+use App\Models\KeputusanSeleksi;
 use App\Models\Panitia;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
@@ -71,7 +72,6 @@ class UpdateInformasiController extends Controller
 
                 $t->waktu_mulai = $waktuMulai;
                 $t->waktu_berakhir = $waktuSelesai;
-                $t->is_pengumuman = ($waktuMulai === $waktuSelesai);
 
                 return $t;
             });
@@ -124,7 +124,23 @@ class UpdateInformasiController extends Controller
     {
         DB::beginTransaction();
         try {
-            $periode = PeriodeRekrutmen::findOrFail($periode_id);
+            $isOrganisasi = Auth::guard('organisasi')->check();
+            if ($isOrganisasi) {
+                $organisasiId = Auth::guard('organisasi')->id();
+            } else {
+                $kepanitiaan = Panitia::query()
+                    ->with('periode')
+                    ->where('nim', Auth::user()?->nim)
+                    ->whereHas('periode', fn ($query) => $query->whereIn('status_aktif', [1, 2]))
+                    ->latest()
+                    ->firstOrFail();
+                $organisasiId = $kepanitiaan->periode->organisasi_id;
+            }
+
+            $periode = PeriodeRekrutmen::query()
+                ->where('organisasi_id', $organisasiId)
+                ->whereIn('status_aktif', [1, 2])
+                ->findOrFail($periode_id);
 
             // 1. UPDATE DATA PERIODE
             $dataUpdatePeriode = [
@@ -196,9 +212,14 @@ class UpdateInformasiController extends Controller
 
             foreach ($request->tahapan as $tIndex => $tData) {
                 $urutan = $tIndex + 1;
-                $isPengumuman = isset($tData['is_pengumuman']) && ($tData['is_pengumuman'] === 'true' || $tData['is_pengumuman'] === '1');
-                $waktuMulai = $tData['tanggal_mulai'];
-                $waktuSelesai = $isPengumuman ? $waktuMulai : $tData['tanggal_selesai'];
+                $jenisTahapan = $tData['jenis_tahapan'];
+                $isPengumuman = $jenisTahapan === 'pengumuman';
+                $waktuMulai = $isPengumuman
+                    ? $tData['waktu_pengumuman']
+                    : $tData['tanggal_mulai'];
+                $waktuSelesai = $isPengumuman
+                    ? $waktuMulai
+                    : $tData['tanggal_selesai'];
 
                 if ($waktuAkhirSebelumnya && $waktuMulai < $waktuAkhirSebelumnya) {
                     throw ValidationException::withMessages(["tahapan.{$tIndex}.tanggal_mulai" => "Waktu mulai Tahapan ke-{$urutan} tidak boleh mendahului waktu selesai tahapan sebelumnya!"]);
@@ -222,6 +243,7 @@ class UpdateInformasiController extends Controller
 
                 $atributTahapan = [
                     'periode_rekrutmen_id' => $periode->id,
+                    'jenis_tahapan' => $jenisTahapan,
                     'nama_tahapan' => strip_tags($tData['nama_tahapan']),
                     'deskripsi_tahapan' => strip_tags($tData['deskripsi']),
                     'lampiran_tahapan' => empty($lampiranPathArray) ? null : $lampiranPathArray,
@@ -234,9 +256,30 @@ class UpdateInformasiController extends Controller
                     ? tap($tahapanLamaSaatIni)->update($atributTahapan)
                     : Tahapan::create($atributTahapan);
 
+                if ($isPengumuman) {
+                    $adaJawabanTugas = $tahapan->tugas()->whereHas('pengumpulanTugas')->exists();
+                    $adaKeputusan = KeputusanSeleksi::query()
+                        ->where('tahapan_id', $tahapan->id)
+                        ->exists();
+
+                    if ($adaJawabanTugas || $adaKeputusan) {
+                        throw ValidationException::withMessages([
+                            "tahapan.{$tIndex}.jenis_tahapan" => 'Tahapan yang sudah memiliki jawaban atau keputusan seleksi tidak dapat diubah menjadi pengumuman.',
+                        ]);
+                    }
+
+                    $tahapan->tugas()->delete();
+
+                    continue;
+                }
+
                 // 6. PROSES TUGAS
-                if (! $isPengumuman && isset($tData['tugas']) && is_array($tData['tugas'])) {
+                if (isset($tData['tugas']) && is_array($tData['tugas'])) {
                     $metodeDistribusi = $tData['metode_distribusi'] ?? 'sama';
+                    $adalahTahapSeleksiPertama = collect($request->tahapan)
+                        ->take($tIndex)
+                        ->where('jenis_tahapan', 'seleksi')
+                        ->isEmpty();
                     $pathsTemplate = [];
 
                     if ($metodeDistribusi === 'sama' && isset($tData['tugas'][0])) {
@@ -265,7 +308,7 @@ class UpdateInformasiController extends Controller
                             }
 
                             foreach ($mapJabatanIndex as $jabatanIdFinal) {
-                                $tipeTugas = $urutan === 1 ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
+                                $tipeTugas = $adalahTahapSeleksiPertama ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
                                 $tipeJawaban = ($tipeTugas === 'pengisian_form') ? 'form' : (($tipeTugas === 'wawancara') ? 'wawancara' : (isset($tugasData['format_proyek']) ? implode(',', $tugasData['format_proyek']) : ''));
 
                                 Tugas::updateOrCreate([
@@ -309,7 +352,7 @@ class UpdateInformasiController extends Controller
                                 }
                             }
 
-                            $tipeTugas = $urutan === 1 ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
+                            $tipeTugas = $adalahTahapSeleksiPertama ? 'pengisian_form' : ($tugasData['tipe_tugas'] ?? 'pengisian_form');
                             $tipeJawaban = ($tipeTugas === 'pengisian_form') ? 'form' : (($tipeTugas === 'wawancara') ? 'wawancara' : (isset($tugasData['format_proyek']) ? implode(',', $tugasData['format_proyek']) : ''));
 
                             Tugas::updateOrCreate([

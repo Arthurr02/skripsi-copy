@@ -15,7 +15,7 @@
     </div>
 
     <div
-        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-8"
     >
         <!-- HEADER SELARAS -->
         <div

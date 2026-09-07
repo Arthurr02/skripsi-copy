@@ -33,8 +33,25 @@ class PengerjaanSeleksiController extends Controller
 
         $tahapans = collect();
         $listJabatan = collect();
+        $tahapanTerakhir = null;
+        $semuaTahapanBerakhir = false;
         if ($periodeAktif) {
             $now = Carbon::now();
+
+            // Penutupan rekrutmen mempertimbangkan semua jenis tahapan,
+            // termasuk tahapan pengumuman/pemberitahuan.
+            $tahapanTerakhir = Tahapan::query()
+                ->where('periode_rekrutmen_id', $periodeAktif->id)
+                ->orderByDesc('waktu_berakhir')
+                ->first();
+            $adaTahapanBelumBerakhir = Tahapan::query()
+                ->where('periode_rekrutmen_id', $periodeAktif->id)
+                ->where(function ($query) use ($now) {
+                    $query->whereNull('waktu_berakhir')
+                        ->orWhere('waktu_berakhir', '>', $now);
+                })
+                ->exists();
+            $semuaTahapanBerakhir = $tahapanTerakhir !== null && ! $adaTahapanBelumBerakhir;
 
             $listJabatan = Jabatan::query()
                 ->where('periode_rekrutmen_id', $periodeAktif->id)
@@ -48,6 +65,7 @@ class PengerjaanSeleksiController extends Controller
 
             $tahapans = Tahapan::query()
                 ->where('periode_rekrutmen_id', $periodeAktif->id)
+                ->seleksi()
                 ->withCount('tugas')
                 ->orderBy('urutan_tahapan')
                 ->orderBy('waktu_mulai')
@@ -86,6 +104,10 @@ class PengerjaanSeleksiController extends Controller
             'listJabatan' => $listJabatan,
             'routePrefix' => $routePrefix,
             'pesertaPerTahapanJabatan' => $pesertaPerTahapanJabatan ?? [],
+            'semuaTahapanBerakhir' => $semuaTahapanBerakhir,
+            'waktuTahapanTerakhir' => $tahapanTerakhir?->waktu_berakhir
+                ? $tahapanTerakhir->waktu_berakhir->format('d/m/Y H:i').' WIB'
+                : null,
         ]);
     }
 
@@ -113,6 +135,7 @@ class PengerjaanSeleksiController extends Controller
             ]),
         ])
             ->where('periode_rekrutmen_id', $periodeAktif->id)
+            ->seleksi()
             ->orderBy('urutan_tahapan', 'asc')
             ->get()
             ->map(function ($tahapan) use ($now, $jabatan) {
@@ -419,7 +442,8 @@ class PengerjaanSeleksiController extends Controller
         abort_unless(
             $jabatan->periode &&
             $jabatan->periode->organisasi_id === $organisasiId &&
-            $tahapan->periode_rekrutmen_id === $jabatan->periode_rekrutmen_id,
+            $tahapan->periode_rekrutmen_id === $jabatan->periode_rekrutmen_id &&
+            $tahapan->isSeleksi(),
             Response::HTTP_FORBIDDEN,
             'Tahapan atau jabatan tidak berada pada rekrutmen Anda.'
         );
@@ -552,6 +576,7 @@ class PengerjaanSeleksiController extends Controller
 
         return Tahapan::query()
             ->where('periode_rekrutmen_id', $tahapan->periode_rekrutmen_id)
+            ->seleksi()
             ->where('urutan_tahapan', '<', $tahapan->urutan_tahapan)
             ->orderByDesc('urutan_tahapan')
             ->first();
@@ -742,10 +767,15 @@ class PengerjaanSeleksiController extends Controller
             return ['organisasiId' => Auth::guard('organisasi')->id(), 'routePrefix' => 'organisasi.'];
         }
 
-        $kepanitiaan = Panitia::where('nim', Auth::user()->nim)->latest()->first();
+        $kepanitiaan = Panitia::query()
+            ->with('periode')
+            ->where('nim', Auth::user()->nim)
+            ->whereHas('periode', fn ($query) => $query->whereIn('status_aktif', [1, 2]))
+            ->latest('id')
+            ->first();
         abort_unless($kepanitiaan, Response::HTTP_FORBIDDEN, 'Anda tidak terdaftar sebagai panitia.');
 
-        $periode = PeriodeRekrutmen::find($kepanitiaan->periode_rekrutmen_id);
+        $periode = $kepanitiaan->periode;
         abort_unless($periode, Response::HTTP_FORBIDDEN, 'Periode rekrutmen panitia tidak ditemukan.');
 
         return ['organisasiId' => $periode->organisasi_id, 'routePrefix' => 'panitia.'];

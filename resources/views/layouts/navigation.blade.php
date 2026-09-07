@@ -1,36 +1,28 @@
-@php
-    // Menentukan identitas pengguna yang sedang login
-    if (Auth::guard('organisasi')->check()) {
-        $user = Auth::guard('organisasi')->user();
-        $userName = $user->nama_organisasi;
-        $userAvatar = $user->avatar_google;
-        $userRole = 'Organisasi';
-    } else {
-        $user = Auth::user();
-        $userName = $user->nama_lengkap;
-        $userAvatar = $user->avatar_google;
-        $userRole = $user->isPanitia() ? 'Panitia Rekrutmen' : 'Mahasiswa';
-    }
-
-    // Sistem Fallback Otomatis UI-Avatars
-    if (empty($userAvatar)) {
-        $urlName = urlencode($userName);
-        $userAvatar = "https://ui-avatars.com/api/?name={$urlName}&background=2563eb&color=ffffff&rounded=true&bold=true";
-    }
-@endphp
-
 <nav
-    x-data="{ open: false }"
-    class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50"
+    class="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm"
 >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-end h-16">
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+        <div class="flex h-16 items-center justify-between">
+            <div class="flex items-center gap-3 md:hidden">
+                <button
+                    type="button"
+                    @click="mobileSidebarOpen = true"
+                    :aria-expanded="mobileSidebarOpen.toString()"
+                    aria-controls="app-sidebar"
+                    class="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    aria-label="Buka menu navigasi"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <span class="text-sm font-extrabold tracking-tight text-slate-800">Sistem Rekrutmen</span>
+            </div>
+
+            <div class="ml-auto flex items-center">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="group flex items-center gap-3 p-1.5">
+                        <button class="group flex items-center gap-2 p-1.5 sm:gap-3">
                             <div
-                                class="flex flex-col text-right justify-center"
+                                class="hidden flex-col justify-center text-right sm:flex"
                             >
                                 <span
                                     class="font-bold text-slate-700 text-sm truncate leading-tight transition-colors"
@@ -58,7 +50,7 @@
                             </div>
 
                             <div
-                                class="text-slate-400 group-hover:text-slate-600 transition-colors pe-1"
+                                class="hidden pe-1 text-slate-400 transition-colors group-hover:text-slate-600 sm:block"
                             >
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />

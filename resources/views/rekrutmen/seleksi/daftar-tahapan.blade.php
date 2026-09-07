@@ -1,5 +1,6 @@
 @php
     $isRiwayat = $isRiwayat ?? false;
+    $isOrganisasi = Auth::guard('organisasi')->check();
     $urlJawaban = $isRiwayat
         ? route($routePrefix . 'riwayat.tahapan', [
             'periode_id' => $periodeAktif?->id ?? '__PERIODE__',
@@ -19,6 +20,8 @@
             tahapanAktif: null,
             urlJawaban: @js($urlJawaban),
             pesertaPerTahapanJabatan: @js($pesertaPerTahapanJabatan ?? []),
+            semuaTahapanBerakhir: @js($semuaTahapanBerakhir ?? false),
+            waktuTahapanTerakhir: @js($waktuTahapanTerakhir ?? null),
             bukaTahapan(tahapan) {
                 this.tahapanAktif = {
                     ...tahapan,
@@ -31,6 +34,46 @@
                 this.modalTerbuka = false;
                 this.tahapanAktif = null;
                 document.body.style.overflow = '';
+            },
+            konfirmasiTutupRekrutmen() {
+                const form = document.getElementById('form-tutup-rekrutmen');
+                if (!form) return;
+
+                const pesanBatasWaktu = this.waktuTahapanTerakhir
+                    ? `Tutup rekrutmen hanya bisa dilakukan jika seluruh tahapan sudah berakhir. Tahapan terakhir berakhir pada ${this.waktuTahapanTerakhir}.`
+                    : 'Tutup rekrutmen hanya bisa dilakukan jika seluruh tahapan sudah berakhir.';
+
+                if (!this.semuaTahapanBerakhir) {
+                    if (window.Swal) {
+                        window.Swal.fire({
+                            icon: 'info',
+                            title: 'Rekrutmen belum dapat ditutup',
+                            text: pesanBatasWaktu,
+                            confirmButtonColor: '#2563eb',
+                        });
+                    } else {
+                        window.alert(pesanBatasWaktu);
+                    }
+                    return;
+                }
+
+                const tutup = () => form.submit();
+                if (!window.Swal) {
+                    if (window.confirm('Tutup rekrutmen dan pindahkan ke riwayat?')) tutup();
+                    return;
+                }
+
+                window.Swal.fire({
+                    icon: 'warning',
+                    title: 'Tutup rekrutmen saat ini?',
+                    text: 'Rekrutmen akan dipindahkan ke riwayat dan aktivitas seleksi tidak dapat diproses lagi.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, tutup rekrutmen',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#dc2626',
+                }).then((hasil) => {
+                    if (hasil.isConfirmed) tutup();
+                });
             }
         }"
         @keydown.escape.window="tutupModal()"
@@ -52,7 +95,7 @@
 
         <!-- MAIN CONTAINER (Padding responsif selaras) -->
         <div
-            class="py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+            class="py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-8"
         >
             <!-- HEADER SELARAS -->
             <div
@@ -71,8 +114,8 @@
                     <p class="text-sm text-slate-500 mt-2 leading-relaxed">
                         {{
                             $isRiwayat
-                                ? 'Tinjau jawaban dan keputusan peserta pada periode rekrutmen yang telah ditutup.'
-                                : 'Perbarui informasi setiap tahapan atau lakukan seleksi peserta berdasarkan posisi dan jabatan.'
+                                ? 'Arsip riwayat tahapan rekrutmen periode terdahulu.'
+                                : 'Pengerjaan seleksi dapat dilakukan melalui daftar tahapan pada halaman ini.'
                         }}
                     </p>
                 </div>
@@ -90,7 +133,11 @@
                                 class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
                             ></span>
                         </span>
-                        <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
+                        <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">{{
+                            $isRiwayat
+                                ? 'Periode'
+                                : 'Periode Aktif'
+                        }}</p>
                     </div>
                     <p class="text-2xl font-extrabold text-blue-600 tracking-tight">
                         {{
@@ -126,19 +173,10 @@
                             >
                                 Daftar Tahapan
                             </h2>
-                            <p class="mt-1 text-xs text-slate-500">
-                                {{
-                                    $isRiwayat
-                                        ? 'Arsip ini hanya dapat dilihat. Data jawaban dan keputusan tetap tersedia untuk ditinjau.'
-                                        : 'Kelola alur rekrutmen dan pantau jawaban peserta pada tiap tahapan.'
-                                }}
-                            </p>
+                            @if (!$isRiwayat)
+                                <p class="mt-1 text-xs text-slate-500">Daftar seluruh tahapan pada rekrutmen periode ini</p>
+                            @endif
                         </div>
-                        <span
-                            class="w-fit rounded-md border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-blue-700"
-                        >
-                            {{ $tahapans->count() }} Tahapan
-                        </span>
                     </div>
 
                     <!-- TIMELINE TAHAPAN -->
@@ -147,8 +185,8 @@
                             <div
                                 class="mb-6 flex justify-between items-start w-full relative group"
                             >
-                                <!-- Garis Vertikal -->
-                                @if (!$loop->last)
+                                <!-- Garis Vertikal (Tetap diteruskan jika ini adalah tahapan terakhir dan kita akan menampilkan tombol Tutup Rekrutmen) -->
+                                @if (!$loop->last || ($isOrganisasi && !$isRiwayat))
                                     <div
                                         class="absolute border-l-2 border-dashed border-slate-200 h-full ml-[1.4rem] left-0 top-12 -bottom-6"
                                     ></div>
@@ -156,7 +194,7 @@
 
                                 <!-- Lingkaran Status Timeline -->
                                 <div
-                                    class="relative z-10 w-12 h-12 rounded-full shrink-0 flex items-center justify-center font-bold shadow-sm border-white border-4 {{ $tahapan->is_past ? 'bg-emerald-500 text-white ring-2 ring-emerald-50' : ($tahapan->is_active ? 'bg-blue-600 text-white ring-2 ring-blue-50' : 'bg-slate-100 text-slate-400 border-2 border-slate-200') }}"
+                                    class="relative z-10 w-12 h-12 rounded-full shrink-0 flex items-center justify-center font-bold shadow-sm border-white border-4 {{ $tahapan->is_past ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-50' : ($tahapan->is_active ? 'bg-blue-600 text-white ring-2 ring-blue-50' : 'bg-slate-100 text-slate-400 border-2 border-slate-200') }}"
                                 >
                                     @if ($tahapan->is_past)
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
@@ -180,7 +218,7 @@
                                         >
                                             <div class="flex-1">
                                                 <h3
-                                                    class="text-lg font-extrabold {{ $tahapan->is_past ? 'text-emerald-700' : 'text-slate-800' }} leading-tight flex items-center gap-2"
+                                                    class="text-lg font-extrabold {{ $tahapan->is_past ? 'text-slate-700' : 'text-slate-800' }} leading-tight flex items-center gap-2"
                                                 >
                                                     {{ $tahapan->urutan_tahapan }}. {{ $tahapan->nama_tahapan }}
                                                     @if ($tahapan->is_active)
@@ -269,10 +307,8 @@
                                                     target="_blank"
                                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 rounded-md shadow-sm transition-colors w-fit"
                                                 >
-                                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0-3-3m3 3 3-3m2 8H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a.707.707 0 0 1 .5.207l5.707 5.707a.707.707 0 0 1 .207.5V19a2 2 0 0 1-2 2Z" />
-                                                    </svg>
-                                                    Unduh Panduan
+                                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0-3-3m3 3 3-3m2 8H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a.707.707 0 0 1 .5.207l5.707 5.707a.707.707 0 0 1 .207.5V19a2 2 0 0 1-2 2Z" /></svg>
+                                                    {{ $tahapan->jenis_tahapan === 'pengumuman' ? 'Unduh Pengumuman' : 'Unduh Panduan Tahapan' }}
                                                 </a>
                                             @endif
 
@@ -283,7 +319,7 @@
                                                 <div
                                                     class="mb-4 flex items-center justify-between gap-3"
                                                 >
-                                                    <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Aksi Tahapan</p>
+                                                    <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Hasil Seleksi</p>
                                                     <span
                                                         class="rounded bg-slate-50 border border-slate-200 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500"
                                                     >
@@ -298,9 +334,7 @@
                                                         class="flex w-full sm:w-auto justify-center items-center gap-2 py-3 px-5 bg-slate-800 text-white hover:bg-slate-900 shadow-sm text-xs font-bold rounded-lg transition-colors"
                                                     >
                                                         Lihat Riwayat Seleksi
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2M9 12h6m-6 4h6m-8-4h.01M9 16h.01" />
-                                                        </svg>
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2M9 12h6m-6 4h6m-8-4h.01M9 16h.01" /></svg>
                                                     </button>
                                                 @else
                                                     <div
@@ -312,18 +346,14 @@
                                                             class="flex-1 flex justify-center items-center gap-2 py-3 px-5 bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md text-xs font-bold rounded-lg transition-all"
                                                         >
                                                             Lakukan Seleksi
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2M9 12h6m-6 4h6m-8-4h.01M9 16h.01" />
-                                                            </svg>
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2M9 12h6m-6 4h6m-8-4h.01M9 16h.01" /></svg>
                                                         </button>
                                                         <a
                                                             href="{{ route($routePrefix . 'rekrutmen.update', ['periode_id' => $periodeAktif->id]) }}?tab=3&tahapan_id={{ $tahapan->id }}"
                                                             class="flex-1 flex justify-center items-center gap-2 py-3 px-5 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-sm text-xs font-bold rounded-lg transition-colors"
                                                         >
                                                             Update Tahapan
-                                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16.862 4.487 1.65-1.65a2.121 2.121 0 1 1 3 3l-9.193 9.193a4.5 4.5 0 0 1-1.897 1.132L7 17l.838-3.422a4.5 4.5 0 0 1 1.132-1.897l7.892-7.194ZM19 7l-3-3M5 21h14" />
-                                                            </svg>
+                                                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16.862 4.487 1.65-1.65a2.121 2.121 0 1 1 3 3l-9.193 9.193a4.5 4.5 0 0 1-1.897 1.132L7 17l.838-3.422a4.5 4.5 0 0 1 1.132-1.897l7.892-7.194ZM19 7l-3-3M5 21h14" /></svg>
                                                         </a>
                                                     </div>
                                                 @endif
@@ -336,10 +366,15 @@
                             <div
                                 class="rounded-xl border-2 border-dashed border-slate-300 px-6 py-16 text-center"
                             >
-                                <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                <p class="mt-4 text-sm font-bold text-slate-500">Tahapan belum ditambahkan pada periode ini.</p>
+                                @if ($isRiwayat)
+                                    <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 12.839a3.32 3.32 0 0 0-.1.661Z" />
+                                    </svg>
+                                    <p class="mt-4 text-sm font-bold text-slate-500">Tidak terdapat tahapan pada periode rekrutmen ini.</p>
+                                @else
+                                    <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                    <p class="mt-4 text-sm font-bold text-slate-500">Tahapan belum ditambahkan pada periode ini.</p>
+                                @endif
                                 @unless ($isRiwayat)
                                     <a
                                         href="{{ route($routePrefix . 'rekrutmen.update', ['periode_id' => $periodeAktif->id]) }}?tab=3"
@@ -351,6 +386,55 @@
                                 @endunless
                             </div>
                         @endforelse
+
+                        <!-- ITEM TIMELINE KHUSUS: Tutup Rekrutmen -->
+                        @if ($tahapans->count() > 0 && !$isRiwayat && $isOrganisasi)
+                            <div
+                                class="flex justify-between items-start w-full relative group"
+                            >
+                                <!-- Lingkaran Status Berbeda (Tanda Berakhir) -->
+                                <div
+                                    class="relative z-10 w-12 h-12 rounded-full shrink-0 flex items-center justify-center font-bold shadow-sm bg-red-50 text-red-500 border-2 border-red-200"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                </div>
+
+                                <!-- Card Final / Tutup Rekrutmen -->
+                                <div class="w-full flex-1 ml-5 sm:ml-7">
+                                    <div
+                                        class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                    >
+                                        <div>
+                                            <h3
+                                                class="text-sm font-extrabold text-slate-800"
+                                            >
+                                                Tutup Periode Rekrutmen
+                                            </h3>
+                                            <p class="mt-1 text-xs font-medium text-slate-500">Setelah seluruh tahapan selesai dieksekusi, segera tutup rekrutmen untuk mengarsipkannya ke riwayat.</p>
+                                        </div>
+
+                                        <form
+                                            id="form-tutup-rekrutmen"
+                                            method="POST"
+                                            action="{{ route('organisasi.rekrutmen.tutup') }}"
+                                            class="shrink-0"
+                                        >
+                                            @csrf
+                                            <button
+                                                type="button"
+                                                @click="
+                                                    konfirmasiTutupRekrutmen()
+                                                "
+                                                class="flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-5 py-2.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-100 hover:border-red-300"
+                                            >
+                                                Tutup Rekrutmen
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -395,17 +479,17 @@
                     class="flex items-start justify-between border-b border-slate-100 px-6 sm:px-8 py-5 sm:py-6 bg-slate-50/50"
                 >
                     <div>
-                        <p class="text-[10px] font-extrabold uppercase tracking-widest text-blue-600 mb-1.5">Pilih Posisi & Jabatan</p>
                         <h2
                             id="judul-pilih-jabatan"
                             class="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight"
-                            x-text="tahapanAktif?.nama"
-                        ></h2>
+                        >
+                            Pilih Posisi Jabatan
+                        </h2>
                         <p class="mt-1 text-xs text-slate-500 font-medium">
                             {{
                                 $isRiwayat
-                                    ? 'Pilih jabatan untuk melihat riwayat jawaban dan keputusan peserta.'
-                                    : 'Pilih jabatan untuk melihat pengumpulan dan seleksi peserta.'
+                                    ? 'Pilih posisi jabatan untuk melihat riwayat seleksi peserta.'
+                                    : 'Pilih posisi jabatan untuk melakukan seleksi peserta.'
                             }}
                         </p>
                     </div>
@@ -454,7 +538,9 @@
                                         <span
                                             class="text-[10px] font-bold text-slate-400 bg-slate-50 group-hover:bg-blue-100 group-hover:text-blue-600 px-2 py-1 rounded-md transition-colors w-fit"
                                         >
-                                            <span x-text="(tahapanAktif?.pesertaPerJabatan?.[{{ $jabatan->id }}] ?? 0) + ' pelamar'"></span>
+                                            <span
+                                                x-text="(tahapanAktif?.pesertaPerJabatan?.[{{ $jabatan->id }}] ?? 0) + ' pelamar'"
+                                            ></span>
                                         </span>
                                     </a>
                                 @endforeach
@@ -473,3 +559,22 @@
         </div>
     </div>
 </x-app-layout>
+
+@if (!$isRiwayat && $isOrganisasi && session('error'))
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const pesan = @js (session('error'));
+            if (window.Swal) {
+                window.Swal.fire({
+                    icon: 'info',
+                    title: 'Rekrutmen belum bisa ditutup',
+                    text: pesan,
+                    confirmButtonColor: '#2563eb',
+                });
+                return;
+            }
+
+            window.alert(pesan);
+        });
+    </script>
+@endif

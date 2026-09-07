@@ -1,100 +1,76 @@
 <div
     x-show="tab === 2"
-    style="display: none"
+    x-cloak
     x-transition:enter="transition ease-out duration-300 transform"
     x-transition:enter-start="opacity-0 translate-y-4"
+    class="space-y-8"
 >
-    <div
-        class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden p-6 md:p-8"
-    >
-        <!-- Header Tab 2 -->
+    <!-- Kontainer Utama disamakan dengan Langkah 1 -->
+    <div class="bg-white rounded-xl border shadow-sm border-slate-200">
+        <!-- Header Section disamakan dengan Langkah 1 -->
         <div
-            class="mb-4 border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-5"
+            class="p-8 md:p-10 border-b rounded-t-xl border-slate-100 bg-slate-50 flex flex-col lg:flex-row lg:items-center justify-between gap-6"
         >
             <div class="flex-1">
-                <h2
-                    class="text-xl font-extrabold text-slate-800 mb-2 flex items-center gap-2"
+                <h3
+                    class="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-3"
                 >
-                    <div class="w-1.5 h-3.5 bg-blue-600 rounded-full"></div>
-                    Formulir Daftar Jabatan:
-                    <span
-                        class="text-blue-700 ml-1"
-                        x-text="pilihan1Name"
-                    ></span>
-                </h2>
+                    <div
+                        class="w-10 h-10 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center shrink-0"
+                    >
+                        <!-- Menggunakan icon clipboard form -->
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 leading-tight"
+                    >
+                        Formulir Daftar Formasi:
+                        <span
+                            class="text-blue-700"
+                            x-text="pilihan1Position && pilihan1Name ? pilihan1Position + ' | ' + pilihan1Name : pilihan1Name"
+                        ></span>
+                    </div>
+                </h3>
 
+                <h2
+                    class="text-sm font-extrabold text-slate-800 tracking-wide mt-2"
+                >
+                    Instruksi Penugasan
+                </h2>
                 <p
-                    class="text-sm font-medium text-slate-500"
+                    class="mt-1 text-xs font-medium leading-relaxed text-slate-500"
                     x-text="currentTugas?.deskripsi"
                 ></p>
-            </div>
-            <div
-                class="bg-slate-50 border border-slate-200 p-4 rounded-lg shrink-0 text-left md:text-right shadow-sm w-full md:w-auto"
-            >
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Tenggat Waktu</p>
-                <p class="text-sm font-extrabold text-slate-800 flex items-center md:justify-end gap-1.5">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    @if ($isWaktuTunggal && $rawMulai)
-                        {{
-                            $rawMulai->translatedFormat(
-                                'd M Y',
-                            )
-                        }}
-                    @elseif ($rawMulai && $rawBerakhir)
-                        {{
-                            $rawBerakhir->translatedFormat(
-                                'd M Y',
-                            )
-                        }}
-                    @else
-                        Tanpa Batas Waktu
-                    @endif
-                </p>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <template
+                        x-for="
+                            (berkas, bIdx) in
+                            (currentTugas?.berkas_template || [])
+                        "
+                        :key="bIdx"
+                    >
+                        <a
+                            :href="'/storage/' + berkas"
+                            target="_blank"
+                            class="w-min group flex items-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-2.5 transition-colors hover:border-blue-600 hover:bg-slate-50 shadow-sm"
+                        >
+                            <span
+                                class="flex min-w-0 items-center gap-2 text-slate-600 group-hover:text-blue-600"
+                            >
+                                <svg class="text-blue-600 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <span class="truncate text-xs font-bold"
+                                    >Unduh Lampiran
+                                    <span x-text="bIdx + 1"></span
+                                ></span>
+                            </span>
+                        </a>
+                    </template>
+                </div>
             </div>
         </div>
 
-        <div class="p-5 md:p-6 space-y-8">
-            <!-- Instruksi Box -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                <!-- Lampiran Template (Jika Ada) -->
-                <template
-                    x-if="
-                        currentTugas?.berkas_template &&
-                        currentTugas.berkas_template.length > 0
-                    "
-                >
-                    <div class="flex items-center gap-5">
-                        <div
-                            class="size-16 flex items-center justify-center text-blue-600 shrink-0"
-                        >
-                            <svg class="size-full" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Lampiran Dokumen Pendukung:</p>
-                            <div class="flex flex-wrap gap-2.5">
-                                <template
-                                    x-for="
-                                        (berkas, bIdx) in
-                                        currentTugas.berkas_template
-                                    "
-                                    :key="bIdx"
-                                >
-                                    <a
-                                        :href="'/storage/' + berkas"
-                                        target="_blank"
-                                        class="inline-flex items-center gap-2 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 px-4 py-2 rounded-md border border-slate-300 transition-colors shadow-sm"
-                                    >
-                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                        Unduh Berkas Lampiran
-                                        <span x-text="bIdx + 1"></span>
-                                    </a>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
+        <!-- Body Section padding disamakan dengan Langkah 1 -->
+        <div class="flex flex-col px-5 sm:px-10 py-6 sm:py-10">
             <!-- Area Dynamic Form -->
             <template x-if="currentTugas?.form && currentTugas.form.length > 0">
                 <div class="space-y-6 pt-2">
@@ -103,12 +79,14 @@
                             x-for="(field, fIdx) in currentTugas.form"
                             :key="fIdx"
                         >
-                            <div class="space-y-2.5">
+                            <!-- SINGLE ROOT ELEMENT UNTUK ALPINE -->
+                            <div class="flex flex-col w-full">
+                                <!-- Label -->
                                 <label
-                                    class="block text-sm font-bold text-slate-700"
+                                    class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
                                 >
-                                    <span x-text="field.label"></span>
-                                    <span
+                                    <span x-text="field.label"></span
+                                    ><span
                                         x-show="field.required"
                                         class="text-red-500 ml-0.5"
                                         >*</span
@@ -118,10 +96,10 @@
                                 <p
                                     x-show="field.keterangan"
                                     x-text="field.keterangan"
-                                    class="mt-1.5 text-xs font-normal text-slate-500"
+                                    class="mb-2 text-xs font-normal text-slate-500"
                                 ></p>
 
-                                <!-- Text / Number / Email / Date -->
+                                <!-- Text / Number / Email / Date Input -->
                                 <template
                                     x-if="
                                         [
@@ -138,9 +116,9 @@
                                         field.tipe === 'text'
                                             ? 'text'
                                             : field.tipe"
-                                        :name="`dynamic_answers[${field.label}]`"
+                                        :name="`dynamic_answers[isian_${fIdx}]`"
                                         :required="field.required"
-                                        class="w-full rounded-md text-sm border border-slate-300 focus:border-blue-600 focus:ring-0 bg-white py-2.5 transition-colors shadow-sm"
+                                        class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800"
                                     />
                                 </template>
 
@@ -155,10 +133,10 @@
                                     "
                                 >
                                     <textarea
-                                        :name="`dynamic_answers[${field.label}]`"
+                                        :name="`dynamic_answers[isian_${fIdx}]`"
                                         :required="field.required"
                                         rows="4"
-                                        class="w-full rounded-md text-sm border border-slate-300 focus:border-blue-600 focus:ring-0 bg-white py-2.5 transition-colors shadow-sm resize-y"
+                                        class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800 resize-y"
                                     ></textarea>
                                 </template>
 
@@ -171,9 +149,9 @@
                                     "
                                 >
                                     <select
-                                        :name="`dynamic_answers[${field.label}]`"
+                                        :name="`dynamic_answers[isian_${fIdx}]`"
                                         :required="field.required"
-                                        class="w-full rounded-md text-sm border border-slate-300 focus:border-blue-600 focus:ring-0 bg-white py-2.5 transition-colors shadow-sm"
+                                        class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800"
                                     >
                                         <option value="">
                                             -- Pilih Salah Satu --
@@ -212,14 +190,14 @@
                                                 x-if="opt && opt.trim() !== ''"
                                             >
                                                 <label
-                                                    class="flex items-center cursor-pointer p-3.5 bg-slate-50 rounded-md border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-colors w-full sm:w-auto min-w-[140px] shadow-sm"
+                                                    class="flex items-center cursor-pointer p-3.5 bg-white rounded-md border border-slate-300 hover:border-blue-500 hover:bg-blue-50 transition-colors w-full sm:w-auto min-w-[140px]"
                                                 >
                                                     <input
                                                         :type="field.tipe"
                                                         :name="field.tipe ===
                                                         'checkbox'
-                                                            ? `dynamic_answers[${field.label}][]`
-                                                            : `dynamic_answers[${field.label}]`"
+                                                            ? `dynamic_answers[isian_${fIdx}][]`
+                                                            : `dynamic_answers[isian_${fIdx}]`"
                                                         :value="opt"
                                                         :required="field.tipe ===
                                                         'radio'
@@ -232,7 +210,7 @@
                                                             : 'rounded-full'"
                                                     />
                                                     <span
-                                                        class="text-sm font-bold text-slate-700"
+                                                        class="text-sm font-bold text-slate-800"
                                                         x-text="opt"
                                                     ></span>
                                                 </label>
@@ -240,137 +218,378 @@
                                         </template>
                                     </div>
                                 </template>
+
+                                <!-- Upload File pada Form Dinamis -->
+                                <template x-if="field.tipe === 'file'">
+                                    <div
+                                        x-data="{
+                                            berkas: [],
+                                            setBerkas(files) {
+                                                this.berkas = Array.from(
+                                                    files || [],
+                                                ).map((file) => ({
+                                                    file,
+                                                    nama: file.name,
+                                                    ukuran:
+                                                        (
+                                                            file.size / 1048576
+                                                        ).toFixed(2) + ' MB',
+                                                }));
+                                            },
+                                            terimaDrop(files) {
+                                                const data = new DataTransfer();
+                                                [
+                                                    ...this.berkas.map(
+                                                        (item) => item.file,
+                                                    ),
+                                                    ...Array.from(files || []),
+                                                ].forEach((file) =>
+                                                    data.items.add(file),
+                                                );
+                                                this.$refs.input.files =
+                                                    data.files;
+                                                this.setBerkas(data.files);
+                                            },
+                                            hapusBerkas(indeks) {
+                                                this.berkas.splice(indeks, 1);
+                                                const data = new DataTransfer();
+                                                this.berkas.forEach((item) =>
+                                                    data.items.add(item.file),
+                                                );
+                                                this.$refs.input.files =
+                                                    data.files;
+                                            },
+                                        }"
+                                        class="mt-1"
+                                    >
+                                        <div
+                                            role="button"
+                                            tabindex="0"
+                                            @click="$refs.input.click()"
+                                            @keydown.enter.prevent="
+                                                $refs.input.click()
+                                            "
+                                            @keydown.space.prevent="
+                                                $refs.input.click()
+                                            "
+                                            @dragover.prevent
+                                            @drop.prevent="
+                                                terimaDrop(
+                                                    $event.dataTransfer.files,
+                                                )
+                                            "
+                                            :class="berkas.length
+                                                ? 'border-blue-400 bg-blue-50'
+                                                : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50'"
+                                            class="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center transition-colors focus:outline-none sm:p-8"
+                                        >
+                                            <input
+                                                x-ref="input"
+                                                @change="
+                                                    setBerkas(
+                                                        $event.target.files,
+                                                    )
+                                                "
+                                                type="file"
+                                                :name="`dynamic_files[isian_${fIdx}][]`"
+                                                multiple
+                                                class="sr-only"
+                                                :accept="(
+                                                    field.allowed_formats || []
+                                                )
+                                                    .flatMap((format) =>
+                                                        format === 'word'
+                                                            ? ['.doc', '.docx']
+                                                            : format === 'excel'
+                                                              ? [
+                                                                    '.xls',
+                                                                    '.xlsx',
+                                                                ]
+                                                              : ['.' + format],
+                                                    )
+                                                    .join(',')"
+                                                :required="field.required &&
+                                                berkas.length === 0"
+                                            />
+                                            <svg class="mb-2 h-8 w-8" :class="berkas.length ? 'text-blue-600' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+                                            <span
+                                                class="text-sm font-bold text-slate-700"
+                                                x-text="
+                                                    berkas.length
+                                                        ? berkas.length +
+                                                          ' berkas siap diunggah'
+                                                        : 'Klik untuk memilih atau seret berkas ke sini'
+                                                "
+                                            ></span>
+                                            <span
+                                                class="mt-1 text-[11px] font-medium text-slate-500"
+                                                x-text="
+                                                    (
+                                                        field.allowed_formats ||
+                                                        []
+                                                    ).length
+                                                        ? 'Format: ' +
+                                                          field.allowed_formats
+                                                              .join(', ')
+                                                              .toUpperCase() +
+                                                          ' · Maks. 5 MB per berkas'
+                                                        : 'Maks. 5 MB per berkas'
+                                                "
+                                            ></span>
+                                        </div>
+                                        <div
+                                            x-show="berkas.length"
+                                            x-cloak
+                                            class="mt-3 space-y-1.5"
+                                        >
+                                            <template
+                                                x-for="(item, indeks) in berkas"
+                                                :key="item.nama + indeks"
+                                            >
+                                                <div
+                                                    class="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800"
+                                                >
+                                                    <span
+                                                        class="truncate"
+                                                        x-text="
+                                                            item.nama +
+                                                            ' · ' +
+                                                            item.ukuran
+                                                        "
+                                                    ></span>
+                                                    <button
+                                                        type="button"
+                                                        @click="
+                                                            hapusBerkas(indeks)
+                                                        "
+                                                        class="shrink-0 font-extrabold text-red-600 hover:text-red-700"
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Garis pembatas juga ditampilkan setelah pertanyaan terakhir. -->
+                                <hr class="mt-8 border-slate-100" />
                             </div>
                         </template>
                     </div>
                 </div>
             </template>
 
-            <!-- Area Unggah File Khusus -->
+            <!-- Area Unggah File Khusus (Digabung dengan gaya Hover Group Langkah 1) -->
             <template
                 x-if="
-                    !currentTugas?.form ||
-                    currentTugas.form.length === 0 ||
-                    currentTugas?.tipe_tugas === 'unggah_berkas'
+                    currentTugas &&
+                    (!currentTugas.form ||
+                        currentTugas.form.length === 0 ||
+                        currentTugas?.tipe_tugas === 'unggah_berkas')
                 "
             >
-                <div class="space-y-4 pt-4 border-t border-slate-200">
+                <div
+                    x-data="{
+                        berkas: [],
+                        setBerkas(files) {
+                            this.berkas = Array.from(files || []).map(
+                                (file) => ({
+                                    file,
+                                    nama: file.name,
+                                    ukuran:
+                                        (file.size / 1048576).toFixed(2) +
+                                        ' MB',
+                                }),
+                            );
+                        },
+                        terimaDrop(files) {
+                            const data = new DataTransfer();
+                            [
+                                ...this.berkas.map((item) => item.file),
+                                ...Array.from(files || []),
+                            ].forEach((file) => data.items.add(file));
+                            this.$refs.input.files = data.files;
+                            this.setBerkas(data.files);
+                        },
+                        hapusBerkas(indeks) {
+                            this.berkas.splice(indeks, 1);
+                            const data = new DataTransfer();
+                            this.berkas.forEach((item) =>
+                                data.items.add(item.file),
+                            );
+                            this.$refs.input.files = data.files;
+                        },
+                    }"
+                    class="mt-4"
+                >
                     <label
-                        class="block text-base font-extrabold text-slate-800 flex items-center gap-2"
+                        class="text-sm font-bold text-slate-700 mb-1 tracking-wide flex items-center gap-2"
                     >
-                        <div class="w-1.5 h-3.5 bg-blue-600 rounded-full"></div>
-                        Unggah Berkas Persyaratan / Portofolio Kerja
+                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Unggah Berkas Persyaratan / Portofolio Kerja<span
+                            class="text-red-500 -ml-0.5"
+                            x-show="
+                                !currentTugas?.form ||
+                                currentTugas.form.length === 0 ||
+                                currentTugas?.tipe_tugas === 'unggah_berkas'
+                            "
+                            >*</span
+                        >
                     </label>
 
                     <div
-                        class="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 hover:bg-slate-100 hover:border-blue-400 transition-colors"
+                        role="button"
+                        tabindex="0"
+                        @click="$refs.input.click()"
+                        @keydown.enter.prevent="$refs.input.click()"
+                        @keydown.space.prevent="$refs.input.click()"
+                        @dragover.prevent
+                        @drop.prevent="terimaDrop($event.dataTransfer.files)"
+                        :class="berkas.length
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50'"
+                        class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center transition-colors focus:outline-none sm:p-8"
                     >
-                        <svg class="mx-auto h-12 w-12 text-slate-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-
-                        <label
-                            for="file_berkas"
-                            class="relative cursor-pointer rounded-md font-bold text-blue-600 hover:text-blue-800 text-sm"
+                        <input
+                            x-ref="input"
+                            id="file_berkas"
+                            name="file_berkas"
+                            type="file"
+                            class="sr-only"
+                            @change="setBerkas($event.target.files)"
+                            :required="(!currentTugas?.form ||
+                                currentTugas.form.length === 0 ||
+                                currentTugas?.tipe_tugas === 'unggah_berkas') &&
+                            berkas.length === 0"
+                        />
+                        <svg class="mb-2 h-8 w-8" :class="berkas.length ? 'text-blue-600' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+                        <span
+                            class="text-sm font-bold text-slate-700"
+                            x-text="
+                                berkas.length
+                                    ? berkas.length + ' berkas siap diunggah'
+                                    : 'Klik untuk memilih atau seret berkas ke sini'
+                            "
+                        ></span>
+                        <span
+                            class="mt-1 text-[11px] font-medium text-slate-500"
+                            >Maks. 5 MB per berkas</span
                         >
-                            <span>Klik untuk Memilih File Penugasan</span>
-                            <input
-                                id="file_berkas"
-                                name="file_berkas"
-                                type="file"
-                                class="sr-only"
-                                :required="!currentTugas?.form ||
-                                currentTugas.form.length === 0"
-                            />
-                        </label>
-                        <p class="text-xs font-normal text-slate-500 mt-2" x-text="currentTugas?.format_proyek && currentTugas.format_proyek.length > 0 ? 'Ekstensi: ' + currentTugas.format_proyek.join(', ') : 'Format yang didukung (Maksimal 5MB)'"></p>
+                    </div>
+                    <div
+                        x-show="berkas.length"
+                        x-cloak
+                        class="mt-3 space-y-1.5"
+                    >
+                        <template
+                            x-for="(item, indeks) in berkas"
+                            :key="item.nama + indeks"
+                        >
+                            <div
+                                class="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800"
+                            >
+                                <span
+                                    class="truncate"
+                                    x-text="item.nama + ' · ' + item.ukuran"
+                                ></span>
+                                <button
+                                    type="button"
+                                    @click="hapusBerkas(indeks)"
+                                    class="shrink-0 font-extrabold text-red-600 hover:text-red-700"
+                                >
+                                    Hapus
+                                </button>
+                            </div>
+                        </template>
                     </div>
                 </div>
+                <hr class="mt-8 border-slate-100" />
             </template>
-        </div>
 
-        <!-- Footer Actions -->
-        <div
-            class="pt-7 mt-3 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-center justify-between gap-4 px-5 md:px-6"
-        >
-            <button
-                type="button"
-                @click="
-                    tab = 1;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                "
-                class="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors w-full sm:w-auto text-center"
+            <!-- Footer Actions disamakan dengan gaya Button Langkah 1 -->
+            <div
+                class="mt-8 flex flex-col-reverse sm:flex-row justify-between items-center gap-4"
             >
-                &larr; Kembali ke Pilih Formasi
-            </button>
+                <button
+                    type="button"
+                    @click="
+                        tab = 1;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    "
+                    class="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors w-full sm:w-auto text-center px-4 py-3"
+                >
+                    &larr; Kembali
+                </button>
 
-            <button
-                type="button"
-                @click="
-                    let form = document.getElementById('formPendaftaran');
-                    document
-                        .querySelectorAll(
-                            '.loader, #loader, #preloader, [class*=\'memuat\']',
-                        )
-                        .forEach((el) => (el.style.display = 'none'));
+                <button
+                    type="button"
+                    @click="
+                        let form = document.getElementById('formPendaftaran');
+                        document
+                            .querySelectorAll(
+                                '.loader, #loader, #preloader, [class*=\'memuat\']',
+                            )
+                            .forEach((el) => (el.style.display = 'none'));
 
-                    if (form.reportValidity()) {
-                        Swal.fire({
-                            icon: 'question',
-                            title: 'Konfirmasi Pendaftaran',
-                            text: 'Apakah Anda yakin seluruh berkas dan isian form sudah benar? Pilihan formasi prioritas dan jawaban berkas tidak dapat diubah kembali setelah dikirimkan.',
-                            showCancelButton: true,
-                            confirmButtonText: 'Ya, Kirim Sekarang',
-                            cancelButtonText: 'Periksa Kembali',
-                            confirmButtonColor: '#2563eb',
-                            cancelButtonColor: '#64748b',
-                            reverseButtons: true,
-                            customClass: {
-                                popup: 'rounded-lg shadow-sm border border-slate-200 font-sans p-6',
-                                title: 'text-xl font-extrabold text-slate-800',
-                                htmlContainer:
-                                    'text-sm font-normal text-slate-500 mt-2',
-                                confirmButton:
-                                    'px-5 py-2.5 rounded-md font-bold text-sm text-white mx-1 bg-blue-600 hover:bg-blue-700',
-                                cancelButton:
-                                    'px-5 py-2.5 rounded-md font-bold text-sm text-white mx-1 bg-slate-500 hover:bg-slate-600',
-                            },
-                            buttonsStyling: false,
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                Swal.fire({
-                                    title: 'Memproses Pengiriman...',
-                                    text: 'Sedang mendaftarkan berkas Anda ke pangkalan data server.',
-                                    allowOutsideClick: false,
-                                    didOpen: () => {
-                                        Swal.showLoading();
-                                    },
-                                    customClass: {
-                                        popup: 'rounded-lg font-sans',
-                                    },
-                                });
-                                form.submit();
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Data Belum Lengkap',
-                            text: 'Pastikan seluruh input wajib bertanda bintang merah (*) telah diisi dengan format berkas yang sesuai ketentuan.',
-                            confirmButtonColor: '#2563eb',
-                            customClass: {
-                                popup: 'rounded-lg border border-slate-200 shadow-sm font-sans',
-                                confirmButton:
-                                    'px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold',
-                            },
-                        });
-                    }
-                "
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-8 py-3 rounded-md transition-colors w-full sm:w-auto shadow-sm flex items-center justify-center gap-2"
-            >
-                Kirim Pendaftaran
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-            </button>
+                        if (form.reportValidity()) {
+                            Swal.fire({
+                                icon: 'question',
+                                title: 'Konfirmasi Pendaftaran',
+                                text: 'Apakah Anda yakin seluruh berkas dan isian form sudah benar? Pilihan formasi prioritas dan jawaban berkas tidak dapat diubah kembali setelah dikirimkan.',
+                                showCancelButton: true,
+                                confirmButtonText: 'Ya, Kirim Sekarang',
+                                cancelButtonText: 'Periksa Kembali',
+                                confirmButtonColor: '#2563eb',
+                                cancelButtonColor: '#64748b',
+                                reverseButtons: true,
+                                customClass: {
+                                    popup: 'rounded-lg shadow-sm border border-slate-200 font-sans p-6',
+                                    title: 'text-xl font-extrabold text-slate-800',
+                                    htmlContainer:
+                                        'text-sm font-normal text-slate-500 mt-2',
+                                    confirmButton:
+                                        'px-5 py-2.5 rounded-md font-bold text-sm text-white mx-1 bg-blue-600 hover:bg-blue-700',
+                                    cancelButton:
+                                        'px-5 py-2.5 rounded-md font-bold text-sm text-white mx-1 bg-slate-500 hover:bg-slate-600',
+                                },
+                                buttonsStyling: false,
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    Swal.fire({
+                                        title: 'Memproses Pengiriman...',
+                                        text: 'Sedang mendaftarkan berkas Anda ke pangkalan data server.',
+                                        allowOutsideClick: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                        customClass: {
+                                            popup: 'rounded-lg font-sans',
+                                        },
+                                    });
+                                    form.submit();
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Data Belum Lengkap',
+                                text: 'Pastikan seluruh input wajib bertanda bintang merah (*) telah diisi dengan format berkas yang sesuai ketentuan.',
+                                confirmButtonColor: '#2563eb',
+                                customClass: {
+                                    popup: 'rounded-lg border border-slate-200 shadow-sm font-sans',
+                                    confirmButton:
+                                        'px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold',
+                                },
+                            });
+                        }
+                    "
+                    class="w-full sm:w-auto sm:ml-auto bg-blue-600 text-white px-6 py-3.5 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                >
+                    Kirim Pendaftaran
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>

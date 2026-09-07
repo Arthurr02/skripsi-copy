@@ -15,7 +15,19 @@ class Tahapan extends Model
 
     protected $casts = [
         'lampiran_tahapan' => 'array',
+        'waktu_mulai' => 'datetime',
+        'waktu_berakhir' => 'datetime',
     ];
+
+    public function scopeSeleksi($query)
+    {
+        return $query->where('jenis_tahapan', 'seleksi');
+    }
+
+    public function isSeleksi(): bool
+    {
+        return $this->jenis_tahapan === 'seleksi';
+    }
 
     public function tugas()
     {

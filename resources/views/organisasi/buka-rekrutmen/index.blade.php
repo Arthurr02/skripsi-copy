@@ -39,7 +39,7 @@
                 <label
                     class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
                 >
-                    Periode Rekrutmen
+                    Periode Rekrutmen<span class="text-red-500 ml-0.5">*</span>
                 </label>
                 @php
                     $tahunSekarang = (int) date('Y');
@@ -131,7 +131,10 @@
                     <label
                         class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
                     >
-                        Panitia Rekrutmen yang Bertugas
+                        Panitia Rekrutmen yang Bertugas<span
+                            class="text-red-500 ml-0.5"
+                            >*</span
+                        >
                     </label>
                     <p class="text-xs font-normal text-slate-500">Masukkan NIM mahasiswa yang akan bertugas sebagai panitia.</p>
                 </div>

@@ -16,7 +16,7 @@
 
     <!-- MAIN CONTAINER (Padding responsif) -->
     <div
-        class="py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+        class="py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-8"
     >
         <!-- HEADER SELARAS -->
         <div
@@ -63,6 +63,7 @@
                 >
                     Anggota Panitia
                 </label>
+                <p class="text-xs font-normal text-slate-500 mb-4">Anggota panitia yang ingin ditambahkan dapat melalui pengisian NIM pada baris terbawah tabel.</p>
             </div>
 
             <!-- Form Penambahan Panitia -->
@@ -175,7 +176,10 @@
                             <tr
                                 class="bg-blue-50/50 border-b-2 border-blue-100/60 align-middle"
                             >
-                                <td class="px-5 py-4 border-blue-100/60">
+                                <td
+                                    class="px-5 py-4 border-blue-100/60"
+                                    colspan="3"
+                                >
                                     <label for="nim-panitia" class="sr-only"
                                         >NIM panitia</label
                                     >
@@ -193,13 +197,7 @@
                                         class="w-full rounded-md border-slate-300 text-sm font-bold text-slate-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-2.5 placeholder:font-normal placeholder:text-slate-400"
                                     />
                                 </td>
-                                <td
-                                    colspan="2"
-                                    class="px-5 py-4 text-xs font-medium text-slate-500 italic border-blue-100/60"
-                                >
-                                    Untuk menambahkan Panitia, masukkan NIM lalu
-                                    tekan tambah di kanan.
-                                </td>
+
                                 <td class="px-5 py-4 text-center">
                                     <button
                                         form="form-tambah-panitia"

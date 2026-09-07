@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveRecruitment;
+use App\Http\Middleware\EnsureMahasiswaBiasa;
 use App\Http\Middleware\IsPanitia;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'is_panitia' => IsPanitia::class,
             'rekrutmen_aktif' => EnsureActiveRecruitment::class,
+            'mahasiswa_biasa' => EnsureMahasiswaBiasa::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

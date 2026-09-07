@@ -15,7 +15,7 @@
     </div>
 
     <div
-        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10"
+        class="py-4 sm:py-8 px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-8"
     >
         <!-- HEADER SELARAS (Rounded-lg, Border Slate, Solid Background) -->
         <div class="mb-8 relative overflow-hidden">
@@ -31,12 +31,7 @@
                         Rekrutmen
                     </h2>
 
-                    <p class="text-sm font-normal text-slate-500 leading-relaxed">
-                        Organisasi Mahasiswa
-                        <span class="text-blue-600 font-bold tracking-wide"
-                            >POLITEKNIK STATISTIKA STIS</span
-                        >
-                    </p>
+                    <p class="text-sm font-normal text-slate-500 leading-relaxed">Kelola dan update informasi rekrutmen periode aktif, mulai dari pengumuman pembukaan rekrutmen hingga alur tahapan seleksi rekrutmen.</p>
                 </div>
 
                 <!-- Info Periode -->
@@ -56,7 +51,7 @@
                         <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
                     </div>
                     <!-- Angka Tahun -->
-                    <p class="text-2xl font-bold text-blue-600 tracking-tight">
+                    <p class="text-2xl font-bold text-center text-blue-600 tracking-tight">
                         {{ $periode->tahun_periode }}
                     </p>
                 </div>
@@ -92,6 +87,7 @@
                             $tugasList[] = [
                                 'id' => $tug['id'] ?? null,
                                 'jabatan_id' => $tug['jabatan_id'] ?? null,
+                                'nama_posisi' => $tug['nama_posisi'] ?? '',
                                 'nama_jabatan' => $tug['nama_jabatan'] ?? '',
                                 'deskripsi_tugas' => $tug['deskripsi_tugas'] ?? '',
                                 'tipe_jawaban_tugas' =>
@@ -110,21 +106,20 @@
 
                     $tahapanResult[] = [
                         'id' => $t['id'] ?? null,
+                        'jenis_tahapan' =>
+                            $t['jenis_tahapan'] ??
+                            (isset($t['is_pengumuman']) &&
+                            ($t['is_pengumuman'] === 'true' || $t['is_pengumuman'] == 1)
+                                ? 'pengumuman'
+                                : 'seleksi'),
                         'nama_tahapan' => $t['nama_tahapan'] ?? '',
                         'deskripsi' => $t['deskripsi'] ?? '',
+                        'waktu_pengumuman' => $t['waktu_pengumuman'] ?? '',
                         'tanggal_mulai' => $t['tanggal_mulai'] ?? '',
                         'tanggal_selesai' => $t['tanggal_selesai'] ?? '',
                         'file_lama' => $t['file_lama'] ?? '',
                         'metodeDistribusi' => $t['metode_distribusi'] ?? 'sama',
                         'tugasJabatan' => $tugasList,
-                        'ada_tugas' => count($tugasList) > 0 || $tIndex === 0,
-                        'is_pengumuman' =>
-                            isset($t['is_pengumuman']) &&
-                            ($t['is_pengumuman'] === 'true' || $t['is_pengumuman'] == 1),
-                        'is_rentang_waktu' =>
-                            isset($t['is_rentang_waktu']) &&
-                            ($t['is_rentang_waktu'] === 'true' ||
-                                $t['is_rentang_waktu'] == 1),
                     ];
                 }
             } elseif (isset($tahapanData) && $tahapanData->isNotEmpty()) {
@@ -152,6 +147,7 @@
                             $tugasList[] = [
                                 'id' => $tug->id,
                                 'jabatan_id' => $tug->jabatan_id,
+                                'nama_posisi' => $tug->jabatan?->nama_posisi ?? '',
                                 'nama_jabatan' => $tug->jabatan?->nama_jabatan ?? '',
                                 'deskripsi_tugas' => $tug->deskripsi_tugas,
                                 'tipe_jawaban_tugas' => $tug->tipe_jawaban_tugas,
@@ -192,15 +188,14 @@
                         ? \Carbon\Carbon::parse($t->waktu_berakhir)->format('Y-m-d\TH:i')
                         : '';
 
-                    $isPengumuman =
-                        $tIndex !== 0 && ($wMulai !== '' && $wMulai === $wSelesai);
-                    $isRentang =
-                        $wMulai !== '' && $wSelesai !== '' && $wMulai !== $wSelesai;
+                    $jenisTahapan = $t->jenis_tahapan ?? 'seleksi';
 
                     $tahapanResult[] = [
                         'id' => $t->id,
+                        'jenis_tahapan' => $jenisTahapan,
                         'nama_tahapan' => $t->nama_tahapan,
                         'deskripsi' => $t->deskripsi_tahapan ?? '',
+                        'waktu_pengumuman' => $jenisTahapan === 'pengumuman' ? $wMulai : '',
                         'tanggal_mulai' => $wMulai,
                         'tanggal_selesai' => $wSelesai,
                         'file_lama' => is_array($t->lampiran_tahapan)
@@ -208,23 +203,19 @@
                             : $t->lampiran_tahapan ?? '',
                         'metodeDistribusi' => $metodeDistribusi,
                         'tugasJabatan' => $tugasList,
-                        'ada_tugas' => count($tugasList) > 0 || $tIndex === 0,
-                        'is_pengumuman' => $isPengumuman,
-                        'is_rentang_waktu' => $isRentang,
                     ];
                 }
             } else {
                 $tahapanResult[] = [
+                    'jenis_tahapan' => '',
                     'nama_tahapan' => '',
                     'deskripsi' => '',
+                    'waktu_pengumuman' => '',
                     'tanggal_mulai' => '',
                     'tanggal_selesai' => '',
                     'file_lama' => '',
                     'metodeDistribusi' => 'sama',
                     'tugasJabatan' => [],
-                    'ada_tugas' => true,
-                    'is_pengumuman' => false,
-                    'is_rentang_waktu' => false,
                 ];
             }
         @endphp
@@ -305,6 +296,11 @@
 
                     // Langkah B: Sinkronisasikan Flat Array ke dalam setiap Tahapan
                     this.listTahapan.forEach((tahapan) => {
+                        if (tahapan.jenis_tahapan !== 'seleksi') {
+                            tahapan.tugasJabatan = [];
+                            return;
+                        }
+
                         const existingByJobId = new Map(
                             (tahapan.tugasJabatan || [])
                                 .filter(tugas => tugas.jabatan_id)
@@ -319,6 +315,7 @@
                             if (existing) {
                                 // Pertahankan data form/berkas lama, hanya update namanya
                                 existing.jabatan_id = jabatan.id;
+                                existing.nama_posisi = jabatan.posisi;
                                 existing.nama_jabatan = jabatan.nama;
                                 return existing;
                             }
@@ -327,6 +324,7 @@
                             return { 
                                 id: null,
                                 jabatan_id: jabatan.id,
+                                nama_posisi: jabatan.posisi,
                                 nama_jabatan: jabatan.nama, 
                                 deskripsi_tugas: '', 
                                 tipe_tugas: 'pengisian_form', 
@@ -341,11 +339,41 @@
 
                 tambahTahapan() { 
                     this.listTahapan.push({ 
-                        id: null, nama_tahapan: '', deskripsi: '', tanggal_mulai: '', tanggal_selesai: '', file_lama: '',
-                        metodeDistribusi: 'sama', tugasJabatan: [], ada_tugas: false, is_pengumuman: false, is_rentang_waktu: false 
+                        id: null, jenis_tahapan: '', nama_tahapan: '', deskripsi: '', waktu_pengumuman: '', tanggal_mulai: '', tanggal_selesai: '', file_lama: '',
+                        metodeDistribusi: 'sama', tugasJabatan: []
                     }); 
                     this.activeTahapanIndex = this.listTahapan.length - 1;
                     this.autoSyncJabatan();
+                },
+
+                aturJenisTahapan(tahapan) {
+                    if (tahapan.jenis_tahapan === 'pengumuman') {
+                        tahapan.tugasJabatan = [];
+                        tahapan.tanggal_mulai = '';
+                        tahapan.tanggal_selesai = '';
+                    } else if (tahapan.jenis_tahapan === 'seleksi') {
+                        tahapan.waktu_pengumuman = '';
+                        this.autoSyncJabatan();
+                    }
+                    this.validateAllTimelines();
+                },
+
+                labelPosisiJabatan(tugas) {
+                    const posisi = (tugas.nama_posisi || '').trim() || 'Tanpa Posisi';
+                    const jabatan = (tugas.nama_jabatan || '').trim() || 'Tanpa Jabatan';
+                    return `${posisi} | ${jabatan}`;
+                },
+
+                labelPenugasan(tahapan, tugas) {
+                    return tahapan.metodeDistribusi === 'sama'
+                        ? 'Seluruh Posisi Jabatan'
+                        : this.labelPosisiJabatan(tugas);
+                },
+
+                isTahapSeleksiPertama(index) {
+                    return this.listTahapan
+                        .slice(0, index)
+                        .every((tahapan) => tahapan.jenis_tahapan !== 'seleksi');
                 },
 
                 hapusTahapan(index) { 
@@ -421,15 +449,26 @@
                     let prevEnd = null;
                     for (let i = 0; i < this.listTahapan.length; i++) {
                         let t = this.listTahapan[i];
-                        if (t.tanggal_mulai) {
-                            if (prevEnd && new Date(t.tanggal_mulai) < new Date(prevEnd)) {
-                                this.errors['tanggal_mulai_' + i] = '⚠️ Waktu mulai harus setelah tahapan sebelumnya selesai!';
+                        const mulai = t.jenis_tahapan === 'pengumuman' ? t.waktu_pengumuman : t.tanggal_mulai;
+                        const selesai = t.jenis_tahapan === 'pengumuman' ? mulai : t.tanggal_selesai;
+                        const fieldName = t.jenis_tahapan === 'pengumuman' ? 'waktu_pengumuman_' + i : 'tanggal_mulai_' + i;
+                        const endFieldName = 'tanggal_selesai_' + i;
+
+                        if (t.jenis_tahapan === 'seleksi' && mulai && selesai && new Date(selesai) < new Date(mulai)) {
+                            this.errors[endFieldName] = '⚠️ Waktu akhir tidak boleh mendahului waktu mulai!';
+                        } else if (this.errors[endFieldName] && this.errors[endFieldName].includes('mendahului waktu mulai')) {
+                            delete this.errors[endFieldName];
+                        }
+
+                        if (mulai) {
+                            if (prevEnd && new Date(mulai) < new Date(prevEnd)) {
+                                this.errors[fieldName] = '⚠️ Waktu mulai harus setelah tahapan sebelumnya selesai!';
                             } else {
-                                if (this.errors['tanggal_mulai_' + i] && this.errors['tanggal_mulai_' + i].includes('tahapan sebelumnya')) {
-                                    delete this.errors['tanggal_mulai_' + i];
+                                if (this.errors[fieldName] && this.errors[fieldName].includes('tahapan sebelumnya')) {
+                                    delete this.errors[fieldName];
                                 }
                             }
-                            prevEnd = (t.is_rentang_waktu && t.tanggal_selesai) ? t.tanggal_selesai : t.tanggal_mulai;
+                            prevEnd = selesai || mulai;
                         }
                     }
                 }
@@ -448,7 +487,7 @@
                 ></div>
 
                 <div
-                    class="relative flex flex-col sm:flex-row justify-between gap-4 sm:gap-0"
+                    class="relative flex flex-col sm:flex-row justify-between sm:mb-16 gap-4 sm:gap-0"
                 >
                     <!-- Tab 1 -->
                     <button
@@ -474,9 +513,9 @@
                                 : tab > 1
                                   ? 'text-slate-800 font-bold'
                                   : 'text-slate-500 font-bold'"
-                            class="text-xs sm:text-[11px] uppercase tracking-widest sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
+                            class="text-xs sm:text-sm sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
                         >
-                            Identitas Rekrutmen
+                            Informasi Rekrutmen
                         </span>
                     </button>
 
@@ -504,7 +543,7 @@
                                 : tab > 2
                                   ? 'text-slate-800 font-bold'
                                   : 'text-slate-500 font-bold'"
-                            class="text-xs sm:text-[11px] uppercase tracking-widest sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
+                            class="text-xs sm:text-sm sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
                         >
                             Formasi Jabatan
                         </span>
@@ -531,7 +570,7 @@
                             :class="tab === 3
                                 ? 'text-blue-700 font-black'
                                 : 'text-slate-500 font-bold'"
-                            class="text-xs sm:text-[11px] uppercase tracking-widest sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
+                            class="text-xs sm:text-sm sm:absolute sm:-bottom-8 sm:whitespace-nowrap transition-colors"
                         >
                             Tahapan Seleksi
                         </span>
@@ -574,7 +613,7 @@
         </div>
 </x-app-layout>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<x-sweet-alert />
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Terapkan kustomisasi border-radius pada semua SweetAlert agar serasi dengan UI Enterprise kita

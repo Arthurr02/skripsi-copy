@@ -82,4 +82,16 @@ class AuthController extends Controller
                 ->with('error', 'Mohon gunakan akun email kampus STIS');
         }
     }
+
+    /** End every authenticated session used by the application. */
+    public function logout(Request $request)
+    {
+        Auth::guard('mahasiswa')->logout();
+        Auth::guard('organisasi')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login');
+    }
 }

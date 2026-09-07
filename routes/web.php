@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Mahasiswa\DaftarRekrutmenController;
+use App\Http\Controllers\Mahasiswa\DashboardController as MahasiswaDashboardController;
 use App\Http\Controllers\Mahasiswa\RekrutmenDiikutiController;
 use App\Http\Controllers\Mahasiswa\RiwayatPendaftaranController;
 use App\Http\Controllers\Organisasi\BukaRekrutmenController;
+use App\Http\Controllers\Organisasi\DashboardController as OrganisasiDashboardController;
+use App\Http\Controllers\Panitia\DashboardController as PanitiaDashboardController;
 use App\Http\Controllers\Rekrutmen\PanitiaRekrutmenController;
 use App\Http\Controllers\Rekrutmen\PendaftarController;
 use App\Http\Controllers\Rekrutmen\PengerjaanSeleksiController;
@@ -16,9 +19,8 @@ use Illuminate\Support\Facades\Route;
 // ==========================================
 // 1. HALAMAN DEPAN & AUTENTIKASI
 // ==========================================
-Route::get('/', function () {
-    return view('auth.login');
-})->name('login');
+Route::view('/', 'auth.login')->name('login');
+Route::view('/login', 'auth.login');
 
 Route::get('/auth/google/redirect', [AuthController::class, 'redirect'])->name('google.login');
 Route::get('/auth/google/callback', [AuthController::class, 'callback']);
@@ -28,9 +30,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // 2. GRUP ORGANISASI INTI (DPM/BEM)
 // ==========================================
 Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('organisasi.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', OrganisasiDashboardController::class)->name('dashboard');
 
     Route::prefix('buka-rekrutmen')->name('buka-rekrutmen.')->group(function () {
         Route::get('/', [BukaRekrutmenController::class, 'index'])->name('index');
@@ -73,16 +73,7 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
 // 3. GRUP PANITIA (Anggota Organisasi)
 // ==========================================
 Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('panitia.')->group(function () {
-
-    Route::get('/dashboard', function () {
-        $user = auth()->user();
-
-        // $dataKepanitiaan = $user->keanggotaan->first();
-        return view('panitia.dashboard', compact(
-            'user',
-            // 'dataKepanitiaan'
-        ));
-    })->name('dashboard');
+    Route::get('/dashboard', PanitiaDashboardController::class)->name('dashboard');
 
     Route::middleware('rekrutmen_aktif')->prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/pendaftar', [PendaftarController::class, 'index'])->name('pendaftar');
@@ -109,11 +100,9 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
 // ==========================================
 // 4. GRUP MAHASISWA BIASA (Pendaftar) - FIXED
 // ==========================================
-Route::middleware('auth')->prefix('mahasiswa')->name('mahasiswa.')->group(function () {
+Route::middleware(['auth', 'mahasiswa_biasa'])->prefix('mahasiswa')->name('mahasiswa.')->group(function () {
 
-    Route::get('/dashboard', function () {
-        return redirect()->route('mahasiswa.rekrutmen.index');
-    })->name('dashboard');
+    Route::get('/dashboard', MahasiswaDashboardController::class)->name('dashboard');
 
     Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
         Route::get('/', [DaftarRekrutmenController::class, 'index'])->name('index');
@@ -135,8 +124,9 @@ Route::middleware('auth')->prefix('mahasiswa')->name('mahasiswa.')->group(functi
     // Menu 3: Riwayat Rekrutmen
     Route::prefix('riwayat')->name('riwayat.')->group(function () {
         Route::get('/', [RiwayatPendaftaranController::class, 'index'])->name('index');
+        Route::get('/diikuti/{id}/tahapan', [RekrutmenDiikutiController::class, 'showTahapanRiwayat'])->name('diikuti.tahapan');
+        Route::get('/diikuti/{pendaftaran}/tugas/{tugas}', [RekrutmenDiikutiController::class, 'showTugasRiwayat'])->name('diikuti.tugas');
+        Route::get('/{periode_id}/pengumuman', [RiwayatPendaftaranController::class, 'showTahapanPengumuman'])->name('pengumuman');
     });
 
 });
-
-require __DIR__.'/auth.php';

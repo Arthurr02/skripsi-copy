@@ -3,16 +3,12 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
-use App\Models\Jabatan;
 use App\Models\KeputusanSeleksi;
-use App\Models\Organisasi;
-// Impor Semua Model yang Diperlukan
 use App\Models\Pendaftaran;
 use App\Models\PengumpulanTugas;
-use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
 use App\Models\Tugas;
-use Carbon\Carbon; // 🌟 DITAMBAHKAN: Model Tugas
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -29,38 +25,52 @@ class RekrutmenDiikutiController extends Controller
     {
         $nimMahasiswa = Auth::user()->nim;
 
-        // 1. Ambil semua riwayat pendaftaran mahasiswa ini
-        $pendaftarans = Pendaftaran::where('nim', $nimMahasiswa)
+        // 1. Ambil pendaftaran pada rekrutmen yang masih berjalan.
+        // Rekrutmen yang telah ditutup ditampilkan khusus pada menu Riwayat.
+        $pendaftarans = Pendaftaran::query()
+            ->with([
+                'pilihanJabatan1.periode.organisasi',
+                'pilihanJabatan2',
+            ])
+            ->where('nim', $nimMahasiswa)
+            ->whereHas('pilihanJabatan1.periode', fn ($query) => $query->whereIn('status_aktif', [1, 2]))
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 2. Petakan relasi secara manual
-        $rekrutmenDiikuti = [];
+        $periodeIds = $pendaftarans
+            ->pluck('pilihanJabatan1.periode_rekrutmen_id')
+            ->filter()
+            ->unique()
+            ->values();
+        $tahapanAktifPerPeriode = Tahapan::query()
+            ->whereIn('periode_rekrutmen_id', $periodeIds)
+            ->where('waktu_mulai', '<=', now())
+            ->where('waktu_berakhir', '>=', now())
+            ->orderBy('urutan_tahapan')
+            ->get()
+            ->keyBy('periode_rekrutmen_id');
 
-        foreach ($pendaftarans as $daftar) {
-            $jabatan1 = Jabatan::find($daftar->jabatan_1_id);
-            $jabatan2 = $daftar->jabatan_2_id
-                ? Jabatan::find($daftar->jabatan_2_id)
-                : null;
+        // Siapkan data presentasi di controller; Blade hanya merender kartu.
+        $rekrutmenDiikuti = $pendaftarans->map(function (Pendaftaran $pendaftaran) use ($tahapanAktifPerPeriode) {
+            $jabatanUtama = $pendaftaran->pilihanJabatan1;
+            $periode = $jabatanUtama->periode;
+            $organisasi = $periode->organisasi;
+            $avatarUrl = $organisasi?->avatar_google
+                ? str_replace('http://', 'https://', $organisasi->avatar_google)
+                : ($organisasi?->lampiran_logo ? asset('storage/'.$organisasi->lampiran_logo) : '');
 
-            if ($jabatan1) {
-                $periode = PeriodeRekrutmen::find($jabatan1->periode_rekrutmen_id);
-
-                if ($periode) {
-                    $organisasi = Organisasi::find($periode->organisasi_id);
-
-                    // Kemas ke dalam object stdClass untuk dikirim ke view
-                    $rekrutmenDiikuti[] = (object) [
-                        'id' => $daftar->id,
-                        'periode' => $periode,
-                        'organisasi' => $organisasi,
-                        'jabatan_1' => $jabatan1,
-                        'jabatan_2' => $jabatan2,
-                        'tanggal_daftar' => $daftar->created_at,
-                    ];
-                }
-            }
-        }
+            return (object) [
+                'id' => $pendaftaran->id,
+                'periode' => $periode,
+                'jabatan_1' => $jabatanUtama,
+                'jabatan_2' => $pendaftaran->pilihanJabatan2,
+                'nama_organisasi' => $organisasi?->nama_organisasi ?? 'Organisasi',
+                'avatar_url' => $avatarUrl,
+                'banner_path' => $periode->lampiran_banner[0] ?? null,
+                'nama_tahapan_berjalan' => $tahapanAktifPerPeriode->get($periode->id)?->nama_tahapan
+                    ?? 'Menunggu / Telah Selesai',
+            ];
+        });
 
         return view('mahasiswa.diikuti.index', compact('rekrutmenDiikuti'));
     }
@@ -69,6 +79,21 @@ class RekrutmenDiikutiController extends Controller
      * Menampilkan detail timeline tahapan berdasarkan ID Pendaftaran
      */
     public function showTahapan($id)
+    {
+        return $this->tampilkanTahapan((int) $id, false);
+    }
+
+    /**
+     * Menampilkan tahapan dari rekrutmen yang sudah ditutup.
+     * Halaman ini tetap memakai alur yang sama, tetapi hanya boleh dibuka dari
+     * menu Riwayat dan seluruh penugasan bersifat baca-saja.
+     */
+    public function showTahapanRiwayat($id)
+    {
+        return $this->tampilkanTahapan((int) $id, true);
+    }
+
+    private function tampilkanTahapan(int $id, bool $isRiwayatMahasiswa)
     {
         $user = Auth::user();
 
@@ -84,6 +109,14 @@ class RekrutmenDiikutiController extends Controller
         $jabatanUtama = $pendaftaran->pilihanJabatan1;
         $periode = $jabatanUtama ? $jabatanUtama->periode : null;
         $organisasi = $periode ? $periode->organisasi : null;
+
+        abort_unless($periode, 404);
+        abort_unless(
+            $isRiwayatMahasiswa
+                ? (int) $periode->status_aktif === 0
+                : in_array((int) $periode->status_aktif, [1, 2], true),
+            404,
+        );
 
         $namaOrganisasi = $organisasi->nama_organisasi ?? 'Organisasi';
 
@@ -160,6 +193,10 @@ class RekrutmenDiikutiController extends Controller
             });
         });
 
+        $routeDetailTugas = $isRiwayatMahasiswa
+            ? 'mahasiswa.riwayat.diikuti.tugas'
+            : 'mahasiswa.rekrutmen.diikuti.tugas_detail';
+
         return view('mahasiswa.diikuti.daftar-tahapan', compact(
             'pendaftaran',
             'tahapans',
@@ -168,7 +205,9 @@ class RekrutmenDiikutiController extends Controller
             'avatarUrl',
             'bannerPath',
             'namaJabatanUtama',
-            'namaPosisiUtama'
+            'namaPosisiUtama',
+            'isRiwayatMahasiswa',
+            'routeDetailTugas',
         ));
     }
 
@@ -176,16 +215,19 @@ class RekrutmenDiikutiController extends Controller
     // FUNGSI BARU UNTUK MENANGANI PENUGASAN (FORM, FILE, & WAWANCARA)
     // =========================================================================
 
-    /**
-     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
-     */
-    /**
-     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
-     */
-    /**
-     * Menampilkan halaman khusus untuk mengisi form dinamis tugas
-     */
+    /** Menampilkan halaman khusus untuk mengisi form dinamis tugas aktif. */
     public function showTugasDetail($pendaftaran_id, $tugas_id)
+    {
+        return $this->tampilkanDetailTugas((int) $pendaftaran_id, (int) $tugas_id, false);
+    }
+
+    /** Menampilkan detail tugas arsip melalui rute riwayat yang bersifat baca-saja. */
+    public function showTugasRiwayat($pendaftaran_id, $tugas_id)
+    {
+        return $this->tampilkanDetailTugas((int) $pendaftaran_id, (int) $tugas_id, true);
+    }
+
+    private function tampilkanDetailTugas(int $pendaftaran_id, int $tugas_id, bool $dibukaDariRiwayat)
     {
         $user = Auth::user();
 
@@ -196,21 +238,48 @@ class RekrutmenDiikutiController extends Controller
             ->firstOrFail();
 
         // Tugas wajib merupakan tugas jabatan pilihan mahasiswa pada periode yang sama.
-        $tugas = $this->temukanTugasMilikPendaftaran($pendaftaran, (int) $tugas_id);
+        // Hak mengerjakan divalidasi setelah waktu tahapan diketahui agar jawaban
+        // lama yang telah dikirim dapat tetap dibaca dari menu Riwayat.
+        $tugas = $this->temukanTugasMilikPendaftaran($pendaftaran, $tugas_id, false);
+
+        $statusPeriode = (int) $pendaftaran->pilihanJabatan1?->periode?->status_aktif;
+        abort_unless(
+            $dibukaDariRiwayat ? $statusPeriode === 0 : in_array($statusPeriode, [1, 2], true),
+            404,
+        );
 
         // 3. Ambil Riwayat Pengumpulan (Jika mahasiswa sudah pernah mengisi)
         $pengumpulan = PengumpulanTugas::where('pendaftaran_id', $pendaftaran->id)
             ->where('tugas_id', $tugas->id)
             ->first();
 
+        $waktuMulai = Carbon::parse($tugas->tahapan->waktu_mulai);
         $waktuBerakhir = Carbon::parse($tugas->tahapan->waktu_berakhir);
-        $dapatDikerjakan = now()->between(
-            Carbon::parse($tugas->tahapan->waktu_mulai),
-            $waktuBerakhir,
-        );
+        $dapatDikerjakan = now()->gte($waktuMulai) && now()->lt($waktuBerakhir);
+        $isRiwayatMahasiswa = $dibukaDariRiwayat;
+        $routeTahapan = $isRiwayatMahasiswa
+            ? 'mahasiswa.riwayat.diikuti.tahapan'
+            : 'mahasiswa.rekrutmen.diikuti.tahapan';
+        $routeDetailTugas = $isRiwayatMahasiswa
+            ? 'mahasiswa.riwayat.diikuti.tugas'
+            : 'mahasiswa.rekrutmen.diikuti.tugas_detail';
+
+        // Instruksi, struktur form, serta lampiran tugas tidak boleh dibuka
+        // melalui URL langsung sebelum waktu tahapan dimulai.
+        if (now()->lt($waktuMulai)) {
+            return redirect()->route($routeTahapan, $pendaftaran->id)
+                ->with('error', 'Informasi penugasan belum tersedia karena tahapan belum dimulai.');
+        }
+
+        if ($dapatDikerjakan) {
+            $this->pastikanPesertaMasihBerhakMengerjakan($pendaftaran, $tugas);
+        }
 
         if (! $dapatDikerjakan && ! $pengumpulan) {
-            return redirect()->route('mahasiswa.rekrutmen.diikuti.tahapan', $pendaftaran->id)
+            return redirect()->route(
+                $routeTahapan,
+                $pendaftaran->id,
+            )
                 ->with('error', 'Tugas ini tidak dapat dikerjakan karena belum dibuka atau waktu pengumpulan telah berakhir.');
         }
 
@@ -246,7 +315,9 @@ class RekrutmenDiikutiController extends Controller
             'pengumpulan',
             'jawabanSebelumnya',
             'dapatDikerjakan',
-            'waktuBerakhir'
+            'waktuBerakhir',
+            'isRiwayatMahasiswa',
+            'routeDetailTugas',
         ));
     }
 
@@ -386,7 +457,7 @@ class RekrutmenDiikutiController extends Controller
             ->with('success_type', 'wawancara');
     }
 
-    private function temukanTugasMilikPendaftaran(Pendaftaran $pendaftaran, int $tugasId): Tugas
+    private function temukanTugasMilikPendaftaran(Pendaftaran $pendaftaran, int $tugasId, bool $periksaHakPengerjaan = true): Tugas
     {
         $jabatan = $pendaftaran->pilihanJabatan1;
 
@@ -399,7 +470,9 @@ class RekrutmenDiikutiController extends Controller
             ))
             ->firstOrFail();
 
-        $this->pastikanPesertaMasihBerhakMengerjakan($pendaftaran, $tugas);
+        if ($periksaHakPengerjaan) {
+            $this->pastikanPesertaMasihBerhakMengerjakan($pendaftaran, $tugas);
+        }
 
         return $tugas;
     }
@@ -412,6 +485,7 @@ class RekrutmenDiikutiController extends Controller
             ->where('keputusan', 'tidak_lolos')
             ->whereHas('tahapan', fn ($query) => $query
                 ->where('periode_rekrutmen_id', $tugas->tahapan->periode_rekrutmen_id)
+                ->where('jenis_tahapan', 'seleksi')
                 ->where('urutan_tahapan', '<=', $tugas->tahapan->urutan_tahapan))
             ->exists();
 
@@ -423,7 +497,7 @@ class RekrutmenDiikutiController extends Controller
         $mulai = Carbon::parse($tugas->tahapan->waktu_mulai);
         $berakhir = Carbon::parse($tugas->tahapan->waktu_berakhir);
 
-        if (! now()->between($mulai, $berakhir)) {
+        if (now()->lt($mulai) || now()->gte($berakhir)) {
             throw ValidationException::withMessages([
                 'tugas' => 'Tugas hanya dapat dikirim selama periode pengumpulan berlangsung.',
             ]);

@@ -29,9 +29,9 @@
             href="{{ $readOnly
                 ? route($routePrefix . 'riwayat.periode', ['periode_id' => $tahapan->periode_rekrutmen_id])
                 : route($routePrefix . 'rekrutmen.seleksi') }}"
-            class="w-max bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 text-xs font-bold px-4 py-2.5 rounded-lg transition-colors border border-slate-200 hover:border-blue-200 inline-flex items-center justify-center gap-2 shadow-sm"
+            class="inline-flex items-center gap-2 text-xs font-extrabold text-slate-500 transition-colors hover:text-blue-700"
         >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 18-6-6 6-6" />
             </svg>
             {{
@@ -101,7 +101,7 @@
                         <label
                             class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
                         >
-                            Deskripsi Tugas
+                            Instruksi Tugas
                         </label>
                         <p class="text-xs font-normal text-slate-500 mb-4">{{ $tugas->deskripsi_tugas }}</p>
                         <!-- Lampiran dari tugas (berkas dari form) -->
@@ -297,8 +297,14 @@
                                             }}
                                         </td>
 
-                                        <td class="w-52 px-5 py-4 text-xs font-semibold text-slate-600 break-words">
-                                            {{ $peserta['pilihan_2'] }}
+                                        <td
+                                            class="w-52 px-5 py-4 text-xs font-semibold text-slate-600 break-words"
+                                        >
+                                            {{
+                                                $peserta[
+                                                    'pilihan_2'
+                                                ]
+                                            }}
                                         </td>
 
                                         <!-- Waktu (2 baris) -->
@@ -323,7 +329,10 @@
                                                     }} WIB</span
                                                 >
                                             @else
-                                                <span class="font-bold text-red-600">Tidak mengumpulkan</span>
+                                                <span
+                                                    class="font-bold text-red-600"
+                                                    >Tidak mengumpulkan</span
+                                                >
                                             @endif
                                         </td>
 
@@ -335,17 +344,18 @@
                                                 <div class="space-y-1">
                                                     @forelse ($peserta['jawaban']['isi'] as $berkas)
                                                         <a
-                                                            class="block w-fit font-bold text-blue-600 hover:underline"
+                                                            class="block w-fit font-bold underline text-blue-500 hover:text-blue-700"
                                                             target="_blank"
                                                             href="{{ asset('storage/' . $berkas) }}"
                                                         >
-                                                            📎 Buka berkas {{ $loop->iteration }}
-                                                        </a>
+                                                            <li>
+                                                                Buka berkas {{ $loop->iteration }}
+                                                            </li></a
+                                                        >
                                                     @empty
                                                         <span
                                                             class="text-slate-400"
-                                                            >Tidak ada
-                                                            berkas.</span
+                                                            >—</span
                                                         >
                                                     @endforelse
                                                 </div>
@@ -365,7 +375,7 @@
                                                                     @forelse ($jawaban['nilai'] as $nilai)
                                                                         @if (is_string($nilai) && str_starts_with($nilai, 'rekrutmen/'))
                                                                             <a
-                                                                                class="font-bold text-blue-600 hover:underline"
+                                                                                class="font-bold text-blue-500 hover:text-blue-700 underline"
                                                                                 target="_blank"
                                                                                 href="{{ asset('storage/' . $nilai) }}"
                                                                             >
@@ -374,7 +384,7 @@
                                                                             >{{
                                                                                 $loop->last
                                                                                     ? ''
-                                                                                    : ', '
+                                                                                    : ' | '
                                                                             }}
                                                                         @else
                                                                             {{
@@ -462,7 +472,7 @@
                                                             href="{{ route($routePrefix . 'rekrutmen.seleksi.wawancara', ['tahapanId' => $tahapan->id, 'jabatanId' => $jabatan->id, 'tugasId' => $tugas->id, 'pendaftaranId' => $peserta['pendaftaran_id']]) }}"
                                                             class="w-full rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold tracking-wide text-blue-700 transition hover:bg-blue-100 text-center"
                                                         >
-                                                            Lakukan Wawancara
+                                                            Lakukan<br />Wawancara
                                                         </a>
                                                     @endif
                                                     <form
@@ -531,7 +541,7 @@
         </div>
     </div>
     <!-- SweetAlert -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <x-sweet-alert />
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             @if (session('success'))

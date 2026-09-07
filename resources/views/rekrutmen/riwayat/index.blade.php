@@ -14,7 +14,7 @@
         ></div>
     </div>
 
-    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-10">
+    <div class="p-4 sm:p-8 max-w-5xl mx-auto relative z-10 my-6 sm:my-8">
         <!-- HEADER SELARAS -->
         <div class="mb-10 relative z-10">
             <h2
@@ -50,7 +50,9 @@
                         href="{{ route($routePrefix . 'riwayat.periode', $periode->id) }}"
                         class="group block bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer shadow-sm"
                     >
-                        <div class="flex flex-col gap-4">
+                        <div
+                            class="flex flex-col items-center sm:items-start gap-4"
+                        >
                             <!-- Ikon Folder -->
                             <div
                                 class="text-blue-200 group-hover:text-blue-500 transition-colors w-max"
@@ -61,7 +63,7 @@
                             </div>
 
                             <!-- Informasi Folder -->
-                            <div>
+                            <div class="text-center sm:text-left">
                                 <h3
                                     class="text-sm font-bold text-slate-800 group-hover:text-blue-700 line-clamp-2"
                                 >

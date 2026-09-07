@@ -70,11 +70,12 @@ class RiwayatRekrutmenController extends Controller
         $now = Carbon::now();
         $tahapans = Tahapan::query()
             ->where('periode_rekrutmen_id', $periodeAktif->id)
+            ->seleksi()
             ->withCount('tugas')
             ->orderBy('urutan_tahapan')
             ->orderBy('waktu_mulai')
             ->get()
-                ->map(function (Tahapan $tahapan) use ($now) {
+            ->map(function (Tahapan $tahapan) use ($now) {
                 $tahapan->parsed_mulai = Carbon::parse($tahapan->waktu_mulai);
                 $tahapan->parsed_berakhir = Carbon::parse($tahapan->waktu_berakhir);
                 $tahapan->is_past = $now->gt($tahapan->parsed_berakhir);
@@ -87,8 +88,8 @@ class RiwayatRekrutmenController extends Controller
                     : (json_decode($tahapan->lampiran_tahapan ?? '[]', true) ?: []);
                 $tahapan->pedoman_path = $lampiran[0] ?? null;
 
-                    return $tahapan;
-                });
+                return $tahapan;
+            });
 
         $tahapans = app(TahapanPesertaCounter::class)
             ->tambahkanJumlahPeserta($tahapans, $periodeAktif->id);
@@ -134,9 +135,4 @@ class RiwayatRekrutmenController extends Controller
         return redirect()->route($authData['prefix'].'riwayat.periode', $periode->id);
     }
 
-    // 4. LEVEL 4: BERKAS PENDAFTAR
-    public function showTahapan($periode_id, $jabatan_id, $tahapan_id)
-    {
-        // Akan kita kerjakan di Fase 4
-    }
 }

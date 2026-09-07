@@ -85,13 +85,4 @@ class BukaRekrutmenController extends Controller
         }
     }
 
-    public function tahapan()
-    {
-        return $this->hasMany(Tahapan::class, 'periode_rekrutmen_id');
-    }
-
-    public function jabatan()
-    {
-        return $this->hasMany(Jabatan::class, 'periode_rekrutmen_id');
-    }
 }

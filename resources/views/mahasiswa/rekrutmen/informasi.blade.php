@@ -74,18 +74,6 @@
                 <div
                     class="absolute -bottom-10 -right-10 w-40 h-40 border-[16px] border-white opacity-20 rounded-full pointer-events-none"
                 ></div>
-
-                <!-- Pola Dot Grid (Dekorasi Tambahan) -->
-                <div
-                    class="absolute top-6 left-6 w-24 h-24 pointer-events-none opacity-40"
-                    style="
-                        background-image: radial-gradient(
-                            #ffffff 2px,
-                            transparent 2px
-                        );
-                        background-size: 12px 12px;
-                    "
-                ></div>
             </div>
 
             <!-- 2. Profil & Info Area -->
@@ -159,10 +147,10 @@
                                     class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
                                 ></span>
                             </span>
-                            <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode Aktif</p>
+                            <p class="text-[11px] text-slate-500 font-bold uppercase tracking-widest">Periode</p>
                         </div>
                         <!-- Angka Tahun -->
-                        <p class="text-2xl font-bold text-blue-600 tracking-tight">
+                        <p class="text-2xl font-bold text-center sm:text-left text-blue-600 tracking-tight">
                             {{ $rekrutmen->tahun_periode }}
                         </p>
                     </div>
@@ -171,7 +159,7 @@
         </div>
 
         <!-- AREA KONTEN UTAMA (Split Grid) -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <div class="grid reverse grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
             <!-- KOLOM KIRI (Deskripsi & Jadwal) -->
             <div class="lg:col-span-8 space-y-6 lg:space-y-8">
                 <!-- Tentang Rekrutmen -->
@@ -377,13 +365,37 @@
                         ></div>
 
                         <div class="relative z-10">
-                            <a
-                                href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
-                                class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-white text-blue-700 text-sm font-bold rounded-md hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
-                            >
-                                Daftar Sekarang
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                            </a>
+                            @if ($sudahTerdaftar)
+                                <div
+                                    class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-emerald-50 text-emerald-700 text-sm font-bold rounded-md border border-emerald-200"
+                                >
+                                    Sudah Terdaftar
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                            @elseif ($pendaftaranTerbuka)
+                                <a
+                                    href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
+                                    class="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-white text-blue-700 text-sm font-bold rounded-md hover:bg-slate-50 border border-slate-200 shadow-sm transition-colors"
+                                >
+                                    Daftar Sekarang
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                </a>
+                            @else
+                                <button
+                                    type="button"
+                                    disabled
+                                    class="w-full flex cursor-not-allowed items-center justify-center gap-2 py-3.5 px-4 bg-slate-100 text-slate-400 text-sm font-bold rounded-md border border-slate-200"
+                                >
+                                    {{
+                                        $pendaftaranSudahBerakhir
+                                            ? 'Pendaftaran Ditutup'
+                                            : 'Pendaftaran Belum Dibuka'
+                                    }}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </button>
+                            @endif
                         </div>
                     </div>
                     <div
@@ -393,7 +405,7 @@
                             class="text-base font-extrabold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-4"
                         >
                             <div
-                                class="w-7 h-7 rounded-md bg-emerald-100 flex items-center justify-center text-emerald-600"
+                                class="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center text-blue-600"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             </div>
@@ -402,7 +414,7 @@
 
                         @if ($jabatans->isEmpty())
                             <div
-                                class="p-4 bg-slate-50 rounded-md border border-slate-200 text-center"
+                                class="p-4 bg-blue-50 rounded-md border border-slate-200 text-center"
                             >
                                 <p class="text-xs text-slate-500 font-normal">Belum ada formasi.</p>
                             </div>
@@ -421,10 +433,10 @@
                                         class="overflow-hidden rounded-lg border border-slate-200 bg-white"
                                     >
                                         <div
-                                            class="flex items-center gap-1 border-b border-slate-100 bg-emerald-50 px-3.5 py-1.5"
+                                            class="flex items-center gap-1 border-b border-slate-100 bg-blue-50 px-3.5 py-1.5"
                                         >
                                             <div
-                                                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-emerald-700"
+                                                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-blue-700"
                                             >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -445,7 +457,7 @@
                                                     class="flex items-center gap-2.5 rounded-md border border-transparent bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-200"
                                                 >
                                                     <span
-                                                        class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                                                        class="h-1.5 w-1.5 rounded-full bg-blue-500"
                                                     ></span>
                                                     <span
                                                         >{{ $jabatan->nama_jabatan }}</span

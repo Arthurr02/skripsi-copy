@@ -1,32 +1,11 @@
-@php
-    // Tentukan Identitas Login
-    $isOrganisasi = Auth::guard('organisasi')->check();
-    $isPanitia = false;
-    $isMahasiswaBiasa = false;
-
-    // Ambil data user yang sedang aktif untuk User Context
-    $currentUser = Auth::user() ?? Auth::guard('organisasi')->user();
-
-    // Tentukan Rute Dashboard dan Prefix Rute Dinamis
-    if ($isOrganisasi) {
-        $dashboardRoute = 'organisasi.dashboard';
-        $routePrefix = 'organisasi.';
-    } else {
-        $isPanitia = $currentUser ? $currentUser->isPanitia() : false;
-        $isMahasiswaBiasa = !$isPanitia;
-
-        $dashboardRoute = $isPanitia ? 'panitia.dashboard' : 'mahasiswa.dashboard';
-        $routePrefix = $isPanitia ? 'panitia.' : 'mahasiswa.';
-    }
-
-    $rekrutmenAktifTersedia = $rekrutmenAktifTersedia ?? false;
-@endphp
-
 <aside
-    class="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 z-50 hidden md:flex md:flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+    id="app-sidebar"
+    x-cloak
+    :class="mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+    class="fixed inset-y-0 left-0 z-[60] flex w-72 flex-col border-r border-slate-200 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.12)] transition-transform duration-300 md:w-64 md:translate-x-0 md:shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
 >
     <div
-        class="flex items-center px-6 h-16 border-b border-slate-100 bg-slate-50/50 shrink-0"
+        class="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/50 px-5 md:px-6"
     >
         <a
             href="{{ route($dashboardRoute) }}"
@@ -34,6 +13,14 @@
         >
             Sistem Rekrutmen
         </a>
+        <button
+            type="button"
+            @click="mobileSidebarOpen = false"
+            class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:hidden"
+            aria-label="Tutup menu navigasi"
+        >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
     </div>
 
     <nav
@@ -54,7 +41,11 @@
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
                     </svg>
-                    Dashboard
+                    {{
+                        $isPanitia
+                            ? 'Dashboard Panitia'
+                            : 'Dashboard'
+                    }}
                 </a>
             </div>
         @endif
@@ -106,49 +97,40 @@
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Riwayat Pendaftaran
-                </a>
-            </div>
-        @endif
-
-        @if ($isOrganisasi)
-            <div class="pt-5 pb-1.5 px-6">
-                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Manajemen Rekrutmen</p>
-            </div>
-            <div class="px-3">
-                <a
-                    href="{{ route('organisasi.buka-rekrutmen.index') }}"
-                    class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 border-l-[3px]
-                    {{ request()->routeIs('organisasi.buka-rekrutmen.*') ? 'bg-blue-50 text-blue-700 border-blue-600 font-bold' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
-                >
-                    <svg
-                        class="w-5 h-5 mr-3 {{ request()->routeIs('organisasi.buka-rekrutmen.*') ? 'text-blue-600' : 'text-slate-400' }}"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-                    </svg>
-                    Buka Rekrutmen
+                    Riwayat Rekrutmen
                 </a>
             </div>
         @endif
 
         @if ($isOrganisasi || $isPanitia)
-            @if (!$isOrganisasi)
-                <div class="pt-5 pb-1.5 px-6">
-                    <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Manajemen Rekrutmen</p>
+            <div class="pt-5 pb-1.5 px-6">
+                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Manajemen Rekrutmen</p>
+            </div>
+            @if ($isOrganisasi)
+                <div class="px-3">
+                    <a
+                        href="{{ route('organisasi.buka-rekrutmen.index') }}"
+                        class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 border-l-[3px]
+                    {{ request()->routeIs('organisasi.buka-rekrutmen.*') ? 'bg-blue-50 text-blue-700 border-blue-600 font-bold' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    >
+                        <svg
+                            class="w-5 h-5 mr-3 {{ request()->routeIs('organisasi.buka-rekrutmen.*') ? 'text-blue-600' : 'text-slate-400' }}"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Buka Rekrutmen
+                    </a>
                 </div>
             @endif
-            <div
-                x-data="{ openRekrutmen: {{ request()->routeIs($routePrefix . 'rekrutmen.*') ? 'false' : 'true' }} }"
-                class="px-3 space-y-1"
-            >
+            <div x-data="{ openRekrutmen: true }" class="px-3 space-y-1">
                 <button
                     @click="openRekrutmen = !openRekrutmen"
                     :aria-expanded="openRekrutmen.toString()"
-                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 focus:outline-none border-l-[3px]
-                    {{ request()->routeIs($routePrefix . 'rekrutmen.*') ? 'border-transparent text-slate-900 bg-slate-50/80' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="w-full justify-between flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 border-l-[3px]
+                    {{ request()->routeIs($routePrefix . 'rekrutmen.*') ? 'bg-blue-50 text-blue-700 border-blue-600 font-bold' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
                 >
                     <div class="flex items-center">
                         <svg
@@ -159,12 +141,10 @@
                         >
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
-                        <span
-                            class="{{ request()->routeIs($routePrefix . 'rekrutmen.*') ? 'font-bold' : '' }}"
-                            >Rekrutmen Saat Ini</span
-                        >
+                        <span class="">Rekrutmen Saat Ini</span>
                     </div>
                     <svg
+                        :class="openRekrutmen ? 'rotate-180' : ''"
                         class="w-4 h-4 transition-transform duration-300 text-slate-400"
                         fill="none"
                         stroke="currentColor"
@@ -175,8 +155,8 @@
                 </button>
 
                 <div
-                    x-show="true"
-                    x-collapse
+                    x-show="openRekrutmen"
+                    x-transition
                     class="ml-[1.35rem] pl-4 border-l-2 border-slate-100 space-y-1 mt-1"
                 >
                     @if ($rekrutmenAktifTersedia)
@@ -206,22 +186,6 @@
                         >
                             Pengerjaan Seleksi
                         </a>
-                        @if ($isOrganisasi)
-                            <form
-                                id="form-tutup-rekrutmen"
-                                method="POST"
-                                action="{{ route('organisasi.rekrutmen.tutup') }}"
-                            >
-                                @csrf
-                                <button
-                                    type="button"
-                                    onclick="window.konfirmasiTutupRekrutmen()"
-                                    class="block w-full rounded-lg px-3 py-2 text-left text-[13px] text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
-                                >
-                                    Tutup Rekrutmen
-                                </button>
-                            </form>
-                        @endif
                     @else
                         @foreach (['Update Informasi', 'Daftar Peserta', 'Pengerjaan Seleksi']
                             as $namaMenu)
@@ -287,7 +251,7 @@
 </aside>
 
 @if ($isOrganisasi || $isPanitia)
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <x-sweet-alert />
     <script>
         window.beritahuRekrutmenBelumAktif = function () {
             const pesan =
@@ -304,28 +268,6 @@
             }
 
             window.alert(pesan);
-        };
-
-        window.konfirmasiTutupRekrutmen = function () {
-            const form = document.getElementById('form-tutup-rekrutmen');
-            if (!form) return;
-
-            if (!window.Swal) {
-                form.submit();
-                return;
-            }
-
-            window.Swal.fire({
-                icon: 'warning',
-                title: 'Tutup rekrutmen saat ini?',
-                text: 'Tutup rekrutmen akan memindahkan rekrutmen saat ini ke riwayat rekrutmen. Segala aktivitas seleksi nantinya sudah tidak dapat diproses lagi.',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, tutup rekrutmen',
-                cancelButtonText: 'Batal',
-                confirmButtonColor: '#dc2626',
-            }).then((hasil) => {
-                if (hasil.isConfirmed) form.submit();
-            });
         };
     </script>
 @endif

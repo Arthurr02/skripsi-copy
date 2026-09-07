@@ -23,6 +23,7 @@
 
         <!-- Scripts -->
         @vite (['resources/css/app.css', 'resources/js/app.js'])
+        <x-sweet-alert />
     </head>
 
     <style>
@@ -47,13 +48,26 @@
         }
     </style>
 
-    <body class="font-sans antialiased bg-gray-50 text-gray-900 max-w-screen">
+    <body class="overflow-x-hidden bg-gray-50 font-sans text-gray-900 antialiased">
         <x-loading-screen />
-        <div class="min-h-screen flex">
+        <div
+            x-data="{ mobileSidebarOpen: false }"
+            @keydown.escape.window="mobileSidebarOpen = false"
+            class="flex min-h-screen"
+        >
             @include ('layouts.sidebar')
 
             <div
-                class="min-w-0 flex-1 flex flex-col md:ml-64 transition-all duration-300"
+                x-cloak
+                x-show="mobileSidebarOpen"
+                x-transition.opacity
+                @click="mobileSidebarOpen = false"
+                class="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[1px] md:hidden"
+                aria-hidden="true"
+            ></div>
+
+            <div
+                class="min-w-0 flex flex-1 flex-col md:ml-64"
             >
                 @include ('layouts.navigation')
 

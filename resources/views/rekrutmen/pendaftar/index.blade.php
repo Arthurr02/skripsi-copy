@@ -83,7 +83,10 @@
                                 onchange="this.form.submit()"
                                 class="block w-full bg-slate-50 border border-slate-300 text-slate-600 text-sm font-bold focus:border-blue-600 focus:ring-0 rounded-lg py-3 px-4 transition-colors"
                             >
-                                <option value="">
+                                <option
+                                    value=""
+                                    class="text-slate-600 font-bold"
+                                >
                                     &mdash; Semua Posisi & Jabatan &mdash;
                                 </option>
                                 @if (isset($listJabatan))
@@ -93,10 +96,17 @@
                                         });
                                     @endphp
                                     @foreach ($groupedJabatan as $namaPosisi => $jabatans)
-                                        <optgroup label="{{ $namaPosisi }}">
+                                        <!-- Tambahkan class text-blue-600 dan font-bold pada optgroup -->
+                                        <!-- Tambahkan bg-slate-100 opsional agar lebih terlihat terpisah -->
+                                        <optgroup
+                                            label="{{ $namaPosisi }}"
+                                            class="text-blue-600 font-extrabold bg-slate-100"
+                                        >
                                             @foreach ($jabatans as $jabatan)
+                                                <!-- Kembalikan warna text ke slate dan background ke putih untuk option -->
                                                 <option
                                                     value="{{ $jabatan->id }}"
+                                                    class="text-slate-700 font-medium bg-white"
                                                     {{
                                                         request('filter_jabatan') == $jabatan->id
                                                             ? 'selected'
@@ -186,7 +196,7 @@
                     <!-- Checkbox Pilihan -->
                     @if (request()->filled('filter_jabatan'))
                         <div
-                            class="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-slate-100 mt-1"
+                            class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1"
                         >
                             <span
                                 class="text-xs font-normal text-slate-500 mr-2"

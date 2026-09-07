@@ -35,7 +35,20 @@ class SeleksiOrganisasiTest extends TestCase
             ->assertSee($tahapan->nama_tahapan)
             ->assertSee('Update Tahapan')
             ->assertSee('Lakukan Seleksi')
+            ->assertSee('Tutup Rekrutmen')
             ->assertSee('tahapan_id='.$tahapan->id, false);
+    }
+
+    public function test_dashboard_displays_the_current_selection_stage_and_its_order(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $tahapan = $this->buatTahapan($periode);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->get(route('organisasi.dashboard'))
+            ->assertOk()
+            ->assertSee('Tahap '.$tahapan->urutan_tahapan.': '.$tahapan->nama_tahapan);
     }
 
     public function test_selection_table_shows_submission_and_missing_submission_statuses(): void
@@ -565,6 +578,38 @@ class SeleksiOrganisasiTest extends TestCase
         $this->assertSame(0, (int) $periode->fresh()->status_aktif);
     }
 
+    public function test_organisasi_cannot_close_recruitment_before_every_stage_ends(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $tahapan = $this->buatTahapan($periode);
+        $tahapan->update(['jenis_tahapan' => 'pengumuman']);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.tutup'))
+            ->assertRedirect(route('organisasi.rekrutmen.seleksi'))
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, (int) $periode->fresh()->status_aktif);
+    }
+
+    public function test_organisasi_can_close_recruitment_after_every_stage_ends(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $tahapan = $this->buatTahapan($periode);
+        $tahapan->update([
+            'waktu_mulai' => now()->subDays(2),
+            'waktu_berakhir' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.tutup'))
+            ->assertRedirect(route('organisasi.dashboard'));
+
+        $this->assertSame(0, (int) $periode->fresh()->status_aktif);
+    }
+
     public function test_participant_list_supports_nested_position_and_selection_status_filters(): void
     {
         $organisasi = $this->buatOrganisasi();
@@ -665,6 +710,69 @@ class SeleksiOrganisasiTest extends TestCase
             'periode_rekrutmen_id' => $periode->id,
             'nim' => $nim,
         ]);
+    }
+
+    public function test_update_information_persists_announcement_and_selection_stages_separately(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+
+        $response = $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.store_update', $periode), [
+                'slogan' => 'Bergabung Bersama Kami',
+                'deskripsi_rekrutmen' => 'Rekrutmen pengurus periode baru.',
+                'nama_posisi' => ['Pengurus Harian'],
+                'nama_jabatan' => ['Sekretaris'],
+                'tahapan' => [
+                    [
+                        'jenis_tahapan' => 'pengumuman',
+                        'nama_tahapan' => 'Pengumuman Pembukaan',
+                        'deskripsi' => 'Informasi pembukaan rekrutmen.',
+                        'waktu_pengumuman' => '2026-09-10T08:00',
+                    ],
+                    [
+                        'jenis_tahapan' => 'seleksi',
+                        'nama_tahapan' => 'Seleksi Administrasi',
+                        'deskripsi' => 'Pemeriksaan dokumen pendaftar.',
+                        'tanggal_mulai' => '2026-09-11T08:00',
+                        'tanggal_selesai' => '2026-09-12T17:00',
+                        'metode_distribusi' => 'sama',
+                        'tugas' => [[
+                            'nama_jabatan' => 'Sekretaris',
+                            'deskripsi_tugas' => 'Lengkapi formulir pendaftaran.',
+                            'tipe_tugas' => 'pengisian_form',
+                        ]],
+                    ],
+                ],
+            ]);
+
+        $response->assertRedirect(route('organisasi.dashboard'));
+
+        $pengumuman = Tahapan::query()->where('nama_tahapan', 'Pengumuman Pembukaan')->firstOrFail();
+        $seleksi = Tahapan::query()->where('nama_tahapan', 'Seleksi Administrasi')->firstOrFail();
+
+        $this->assertSame('pengumuman', $pengumuman->jenis_tahapan);
+        $this->assertSame($pengumuman->waktu_mulai->format('Y-m-d H:i'), $pengumuman->waktu_berakhir->format('Y-m-d H:i'));
+        $this->assertSame('seleksi', $seleksi->jenis_tahapan);
+        $this->assertSame('2026-09-11 08:00', $seleksi->waktu_mulai->format('Y-m-d H:i'));
+        $this->assertSame('2026-09-12 17:00', $seleksi->waktu_berakhir->format('Y-m-d H:i'));
+        $this->assertSame(0, $pengumuman->tugas()->count());
+        $this->assertSame(1, $seleksi->tugas()->count());
+    }
+
+    public function test_panitia_cannot_open_student_workspace_routes(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $mahasiswa = $this->buatMahasiswa('222222238', 'Panitia Terbatas');
+        Panitia::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'nim' => $mahasiswa->nim,
+        ]);
+
+        $this->actingAs($mahasiswa)
+            ->get(route('mahasiswa.rekrutmen.index'))
+            ->assertRedirect(route('panitia.dashboard'));
     }
 
     private function buatOrganisasi(): Organisasi

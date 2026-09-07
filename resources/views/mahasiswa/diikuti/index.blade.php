@@ -24,16 +24,10 @@
                 <h2
                     class="text-3xl font-extrabold text-slate-800 tracking-tight"
                 >
-                    Rekrutmen Sedang Diikuti
+                    Rekrutmen Diikuti
                 </h2>
-                <p class="text-sm text-slate-500 mt-1">Pantau status seleksi dan rekrutmen organisasi yang sedang Anda ikuti.</p>
+                <p class="text-sm text-slate-500 mt-1">Daftar rekrutmen organisai yang saat ini sedang diikuti.</p>
             </div>
-            <a
-                href="{{ route('mahasiswa.rekrutmen.index') }}"
-                class="inline-flex items-center text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-800 transition-colors px-4 py-2 rounded-md border border-blue-200 shrink-0 shadow-sm"
-            >
-                + Cari Rekrutmen Baru
-            </a>
         </div>
 
         @if (count($rekrutmenDiikuti) === 0)
@@ -49,63 +43,26 @@
                 <h3 class="text-xl font-bold text-slate-800 mb-1.5">
                     Belum Ada Rekrutmen yang Diikuti
                 </h3>
-                <p class="text-slate-500 text-sm max-w-md">Anda belum mendaftar ke organisasi kepanitiaan manapun. Silakan jelajahi daftar rekrutmen yang sedang buka.</p>
+                <p class="text-slate-500 text-sm max-w-md">Anda belum mendaftar rekrutmen organisasi manapun. Silakan daftar rekrutmen yang sedang buka terlebih dulu.</p>
             </div>
         @else
             <!-- DAFTAR KARTU REKRUTMEN -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($rekrutmenDiikuti as $item)
-                    @php
-                        $organisasi = $item->organisasi;
-                        $namaOrganisasi = $organisasi->nama_organisasi ?? 'Organisasi';
-
-                        $avatarUrl = '';
-                        if ($organisasi) {
-                            if (!empty($organisasi->avatar_google)) {
-                                $avatarUrl = str_replace(
-                                    'http://',
-                                    'https://',
-                                    $organisasi->avatar_google,
-                                );
-                            } elseif (!empty($organisasi->lampiran_logo)) {
-                                $avatarUrl = asset('storage/' . $organisasi->lampiran_logo);
-                            }
-                        }
-
-                        $bannerData = $item->periode->lampiran_banner;
-                        $bannerArray = is_string($bannerData)
-                            ? json_decode($bannerData, true)
-                            : $bannerData;
-                        $bannerPath =
-                            is_array($bannerArray) && count($bannerArray) > 0 ? $bannerArray[0] : null;
-
-                        $tahapanBerjalan = \App\Models\Tahapan::where(
-                            'periode_rekrutmen_id',
-                            $item->periode->id,
-                        )
-                            ->where('waktu_mulai', '<=', now())
-                            ->where('waktu_berakhir', '>=', now())
-                            ->first();
-                        $namaTahapan = $tahapanBerjalan
-                            ? $tahapanBerjalan->nama_tahapan
-                            : 'Menunggu / Telah Selesai';
-                    @endphp
                     <div
                         class="group bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col hover:border-blue-400 transition-colors shadow-sm"
                     >
                         <!-- Banner Area (Dioptimalkan Tingginya menjadi h-28) -->
                         <div
-                            class="h-28 relative bg-slate-900 border-b border-slate-200 shrink-0"
+                            class="h-28 relative border-b border-slate-200 overflow-hidden shrink-0"
                         >
-                            @if ($bannerPath)
+                            @if ($item->banner_path)
                                 <img
-                                    src="{{ asset('storage/' . $bannerPath) }}"
+                                    src="{{ asset('storage/' . $item->banner_path) }}"
                                     alt="Banner"
-                                    class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-luminosity group-hover:opacity-80 transition-opacity"
+                                    class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"
-                                ></div>
+                                <div class="absolute inset-0"></div>
                             @else
                                 <div class="absolute inset-0 opacity-20">
                                     <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -130,12 +87,12 @@
 
                             <div class="absolute top-2.5 right-2.5">
                                 <span
-                                    class="bg-yellow-100 border border-yellow-200 text-yellow-700 text-[9px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1.5 uppercase tracking-wide"
+                                    class="bg-yellow-100 border border-yellow-200 text-yellow-700 text-[9px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1.5 tracking-wide"
                                 >
                                     <span
                                         class="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse"
                                     ></span>
-                                    Sedang Seleksi
+                                    {{ $item->nama_tahapan_berjalan }}
                                 </span>
                             </div>
                         </div>
@@ -145,10 +102,10 @@
                             <!-- Avatar Berada di Tengah Garis (Overlap) -->
                             <div class="absolute -top-8 left-6 pr-6">
                                 <div class="flex items-end gap-3">
-                                    @if (!empty($avatarUrl))
+                                    @if (!empty($item->avatar_url))
                                         <img
-                                            src="{{ $avatarUrl }}"
-                                            alt="Logo {{ $namaOrganisasi }}"
+                                            src="{{ $item->avatar_url }}"
+                                            alt="Logo {{ $item->nama_organisasi }}"
                                             class="w-14 h-14 rounded-full object-cover shadow-sm bg-white border border-slate-200"
                                             referrerpolicy="no-referrer"
                                             onerror="this.style.display='none'; document.getElementById('card-avatar-fallback-{{ $loop->iteration }}').style.display='flex';"
@@ -156,20 +113,20 @@
                                     @endif
                                     <div
                                         id="card-avatar-fallback-{{ $loop->iteration }}"
-                                        style="{{ !empty($avatarUrl) ? 'display: none;' : 'display: flex;' }}"
+                                        style="{{ !empty($item->avatar_url) ? 'display: none;' : 'display: flex;' }}"
                                         class="w-14 h-14 rounded-md bg-blue-600 text-white flex items-center justify-center text-xl font-black uppercase border border-blue-700 shadow-sm select-none"
                                     >
                                         {{
                                             substr(
-                                                $namaOrganisasi,
+                                                $item->nama_organisasi,
                                                 0,
                                                 1,
                                             )
                                         }}
                                     </div>
                                     <div class="flex min-w-0 h-7 items-center">
-                                        <p class="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider truncate">
-                                            {{ $namaOrganisasi }}
+                                        <p class="text-[13px] font-extrabold text-blue-600 tracking-wide truncate">
+                                            {{ $item->nama_organisasi }}
                                         </p>
                                     </div>
                                 </div>
@@ -178,7 +135,7 @@
                             <!-- Detail Organisasi -->
                             <div class="mt-2 mb-3">
                                 <h3
-                                    class="text-base font-extrabold text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2"
+                                    class="text-base font-extrabold text-slate-800 leading-snug transition-colors line-clamp-2"
                                 >
                                     {{
                                         $item->periode->slogan ??
@@ -199,7 +156,7 @@
                                     <div
                                         class="flex flex-col sm:items-end w-full min-w-0"
                                     >
-                                        <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate max-w-full -mb-0.5">
+                                        <p class="text-[11px] font-bold text-slate-500 truncate max-w-full -mb-0.5">
                                             {{
                                                 !empty($item->jabatan_1->nama_posisi) &&
                                                 $item->jabatan_1->nama_posisi !== '-'
@@ -207,7 +164,7 @@
                                                     : 'Tanpa Divisi Khusus'
                                             }}
                                         </p>
-                                        <p class="text-xs font-extrabold text-slate-700 uppercase max-w-full leading-tight">
+                                        <p class="text-[11px] font-extrabold text-slate-700 uppercase max-w-full leading-tight">
                                             {{
                                                 $item->jabatan_1
                                                     ->nama_jabatan
@@ -225,7 +182,7 @@
                                         <div
                                             class="flex flex-col sm:items-end w-full min-w-0"
                                         >
-                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-full -mb-0.5">
+                                            <p class="text-[11px] font-bold text-slate-500 truncate max-w-full -mb-0.5">
                                                 {{
                                                     !empty($item->jabatan_2->nama_posisi) &&
                                                     $item->jabatan_2->nama_posisi !== '-'
@@ -233,7 +190,7 @@
                                                         : 'Tanpa Divisi Khusus'
                                                 }}
                                             </p>
-                                            <p class="text-[9px] font-bold uppercase text-slate-600 max-w-full leading-tight">
+                                            <p class="text-[11px] font-bold uppercase text-slate-600 max-w-full leading-tight">
                                                 {{
                                                     $item->jabatan_2
                                                         ->nama_jabatan
@@ -244,36 +201,18 @@
                                 @endif
                             </div>
 
-                            <!-- Status Tahapan Info -->
-                            <div
-                                class="bg-indigo-50 border border-indigo-100 rounded-md p-2.5 mb-5 flex items-center gap-2.5"
-                            >
-                                <div
-                                    class="w-6 h-6 rounded-md bg-indigo-100 flex items-center justify-center shrink-0"
+                            <!-- Action Buttons -->
+                            <div class="mt-auto grid grid-cols-1 gap-2">
+                                <a
+                                    href="{{ route('mahasiswa.rekrutmen.info', $item->periode->id) }}"
+                                    class="w-full flex justify-center py-2 px-4 border border-slate-300 bg-white text-xs font-bold text-slate-700 rounded-md hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-sm gap-1.5 items-center"
                                 >
-                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                                <div
-                                    class="flex flex-col overflow-hidden w-full"
-                                >
-                                    <span
-                                        class="text-[9px] font-bold text-blue-500 uppercase tracking-wider"
-                                        >Tahapan Saat Ini</span
-                                    >
-                                    <span
-                                        class="text-[11px] font-bold text-blue-900 truncate"
-                                        title="{{ $namaTahapan }}"
-                                    >
-                                        {{ $namaTahapan }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Action Button -->
-                            <div class="mt-auto">
+                                    Detail Info
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" /></svg>
+                                </a>
                                 <a
                                     href="{{ route('mahasiswa.rekrutmen.diikuti.tahapan', $item->id) }}"
-                                    class="w-full flex justify-center py-2 px-4 bg-slate-800 text-xs font-bold text-white rounded-md hover:bg-slate-900 transition-colors shadow-sm gap-1.5 items-center"
+                                    class="w-full flex justify-center py-2 px-4 bg-blue-600 text-xs font-bold text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm gap-1.5 items-center"
                                 >
                                     Kerjakan Tugas
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -287,7 +226,7 @@
     </div>
 </x-app-layout>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<x-sweet-alert />
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const premiumSwal = Swal.mixin({

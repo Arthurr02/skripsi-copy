@@ -15,7 +15,7 @@ class TahapanPesertaCounter
      * Hanya Pilihan 1 yang diproses. Tahap setelah tahap pertama mensyaratkan
      * keputusan lulus pada tahapan langsung sebelumnya untuk jabatan yang sama.
      *
-     * @param Collection<int, Tahapan> $tahapans
+     * @param  Collection<int, Tahapan>  $tahapans
      * @return Collection<int, Tahapan>
      */
     public function tambahkanJumlahPeserta(Collection $tahapans, int $periodeId): Collection
@@ -40,7 +40,7 @@ class TahapanPesertaCounter
                 ->whereIn('tahapan_id', $tahapans->pluck('id'))
                 ->get();
 
-        return $tahapans->each(function (Tahapan $tahapan) use ($tahapans, $pendaftarans, $keputusanLulus, $jabatanIds) {
+        $tahapans->each(function (Tahapan $tahapan) use ($tahapans, $pendaftarans, $keputusanLulus, $jabatanIds) {
             $tahapanSebelumnya = $tahapans
                 ->where('urutan_tahapan', '<', $tahapan->urutan_tahapan)
                 ->sortByDesc('urutan_tahapan')
@@ -53,8 +53,7 @@ class TahapanPesertaCounter
 
                     if ($tahapanSebelumnya) {
                         $pesertaJabatan = $pesertaJabatan->filter(fn (Pendaftaran $pendaftaran) => $keputusanLulus->contains(
-                            fn (KeputusanSeleksi $keputusan) =>
-                                (int) $keputusan->pendaftaran_id === (int) $pendaftaran->id
+                            fn (KeputusanSeleksi $keputusan) => (int) $keputusan->pendaftaran_id === (int) $pendaftaran->id
                                 && (int) $keputusan->jabatan_id === $jabatanId
                                 && (int) $keputusan->tahapan_id === (int) $tahapanSebelumnya->id,
                         ));
@@ -65,5 +64,7 @@ class TahapanPesertaCounter
                 ->all();
             $tahapan->peserta_count = array_sum($tahapan->peserta_per_jabatan);
         });
+
+        return $tahapans;
     }
 }
