@@ -178,7 +178,7 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
                     'isian_1' => ['g'],
                 ],
                 'dynamic_files' => [
-                    'isian_2' => [UploadedFile::fake()->create('cv.pdf', 32, 'application/pdf')],
+                    'isian_2' => [UploadedFile::fake()->createWithContent('cv.pdf', $this->isiPdfValid())],
                 ],
             ])
             ->assertRedirect(route('mahasiswa.rekrutmen.index'));
@@ -309,5 +309,10 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
             'tahun_periode' => '2026/2027',
             'status_aktif' => $statusAktif,
         ]);
+    }
+
+    private function isiPdfValid(): string
+    {
+        return "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
     }
 }

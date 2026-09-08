@@ -207,7 +207,7 @@
                 }
             } else {
                 $tahapanResult[] = [
-                    'jenis_tahapan' => '',
+                    'jenis_tahapan' => 'seleksi',
                     'nama_tahapan' => '',
                     'deskripsi' => '',
                     'waktu_pengumuman' => '',
@@ -218,13 +218,18 @@
                     'tugasJabatan' => [],
                 ];
             }
+
+            // Tahapan pertama selalu menjadi pintu pendaftaran/seleksi.
+            // Nilai ini juga dikunci kembali oleh Form Request di server.
+            $tahapanResult[0]['jenis_tahapan'] = 'seleksi';
         @endphp
 
         <div
             x-data="{
                 
-                tab: Number(new URLSearchParams(window.location.search).get('tab')) === 3 ? 3 : 1,
+                tab: Number(new URLSearchParams(window.location.search).get('tab')) === 3 ? 3 : {{ collect(array_keys($errors->messages()))->contains(fn ($key) => str_starts_with($key, 'tahapan')) ? 3 : (collect(array_keys($errors->messages()))->contains(fn ($key) => str_starts_with($key, 'nama_posisi') || str_starts_with($key, 'nama_jabatan') || str_starts_with($key, 'jabatan_ids')) ? 2 : 1) }},
                 errors: {},
+                serverErrors: @json($errors->messages()),
                 openFormBuilder: false,
                 isWawancaraMode: false, 
                 showFormSuccess: false, 
@@ -243,6 +248,8 @@
                 listTahapan: {{ json_encode($tahapanResult ?? []) }},
 
                 init() {
+                    this.tampilkanKesalahanServer();
+
                     // 2. Pantau perubahan pada struktur grup yang baru
                     this.$watch('listGroupPosisi', () => { this.autoSyncJabatan(); }, { deep: true });
                     this.autoSyncJabatan();
@@ -264,6 +271,51 @@
                             });
                         });
                     }
+                },
+
+                tampilkanKesalahanServer() {
+                    Object.entries(this.serverErrors).forEach(([key, pesan]) => {
+                        const pesanPertama = Array.isArray(pesan) ? pesan[0] : pesan;
+                        const tahap = key.match(/^tahapan\.(\d+)\.([a-z_]+)/);
+
+                        if (tahap) {
+                            const [, indeks, bidang] = tahap;
+                            const namaBidang = {
+                                nama_tahapan: 'nama_tahapan_',
+                                deskripsi: 'deskripsi_tahapan_',
+                                waktu_pengumuman: 'waktu_pengumuman_',
+                                tanggal_mulai: 'tanggal_mulai_',
+                                tanggal_selesai: 'tanggal_selesai_',
+                                jenis_tahapan: 'jenis_tahapan_',
+                            }[bidang];
+
+                            if (namaBidang) {
+                                this.errors[namaBidang + indeks] = pesanPertama;
+                            }
+
+                            return;
+                        }
+
+                        if (key.startsWith('tahapan_lampiran_')) {
+                            this.errors[key] = pesanPertama;
+
+                            return;
+                        }
+
+                        this.errors[key] = pesanPertama;
+                    });
+
+                    let indeksJabatan = 0;
+                    this.listGroupPosisi.forEach((grup, indeksPosisi) => {
+                        grup.jabatans.forEach((jabatan, indeksDalamPosisi) => {
+                            const key = 'nama_jabatan.' + indeksJabatan;
+                            if (this.serverErrors[key]) {
+                                this.errors['nama_jabatan_' + indeksPosisi + '_' + indeksDalamPosisi] =
+                                    this.serverErrors[key][0];
+                            }
+                            indeksJabatan++;
+                        });
+                    });
                 },
 
                 // 3. EMPAT FUNGSI KONTROL GRUP JABATAN
@@ -626,11 +678,7 @@
         Swal.fire({
             icon: 'error',
             title: 'Sistem Terkendala',
-            text: '{!!
-        session(
-            'error_server',
-        )
-    !!}',
+            text: @json(session('error_server')),
             confirmButtonColor: '#2563eb',
             customClass: swalCustomClass,
         });
@@ -661,11 +709,7 @@
         Swal.fire({
             icon: 'success',
             title: 'Konfigurasi Disimpan!',
-            text: '{!!
-        session(
-            'success_update',
-        )
-    !!}',
+            text: @json(session('success_update')),
             confirmButtonColor: '#2563eb',
             customClass: swalCustomClass,
         });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Mahasiswa;
+use App\Models\Dosen;
 use App\Models\Organisasi;
 use App\Models\User;
 
@@ -49,6 +50,11 @@ return [
             'driver' => 'session',
             'provider' => 'organisasis',
         ],
+
+        'dosen' => [
+            'driver' => 'session',
+            'provider' => 'dosens',
+        ],
     ],
 
     /*
@@ -78,6 +84,11 @@ return [
         'organisasis' => [
             'driver' => 'eloquent',
             'model' => Organisasi::class,
+        ],
+
+        'dosens' => [
+            'driver' => 'eloquent',
+            'model' => Dosen::class,
         ],
     ],
 

@@ -19,6 +19,7 @@ class Breadcrumb extends Component
 
         $this->items = match ($routeName) {
             'organisasi.dashboard' => $this->trail(['Dashboard']),
+            'organisasi.daftar-anggota.index' => $this->trail(['Dashboard', 'organisasi.dashboard'], ['Upload Daftar Anggota']),
             'organisasi.buka-rekrutmen.index' => $this->trail(['Dashboard', 'organisasi.dashboard'], ['Buka Rekrutmen']),
             'organisasi.rekrutmen.update' => $this->trail(['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini'], ['Update Informasi']),
             'organisasi.rekrutmen.panitia' => $this->trail(['Dashboard', 'organisasi.dashboard'], ['Rekrutmen Saat Ini'], ['Daftar Panitia']),
@@ -43,6 +44,9 @@ class Breadcrumb extends Component
             'panitia.riwayat.periode' => $this->trail(['Dashboard', 'panitia.dashboard'], ['Riwayat Rekrutmen', 'panitia.riwayat.index'], ['Detail Periode']),
             'panitia.riwayat.jabatan' => $this->trail(['Dashboard', 'panitia.dashboard'], ['Riwayat Rekrutmen', 'panitia.riwayat.index'], ['Detail Periode', 'panitia.riwayat.periode', ['periode_id' => $parameter('periode_id')]], ['Detail Jabatan']),
             'panitia.riwayat.tahapan' => $this->trail(['Dashboard', 'panitia.dashboard'], ['Riwayat Rekrutmen', 'panitia.riwayat.index'], ['Detail Periode', 'panitia.riwayat.periode', ['periode_id' => $parameter('periode_id')]], ['Detail Tahapan']),
+
+            'dosen.dashboard' => $this->trail(['Data Organisasi']),
+            'dosen.data-organisasi.index' => $this->trail(['Data Organisasi']),
 
             'mahasiswa.rekrutmen.index' => $this->trail(['Daftar Rekrutmen']),
             'mahasiswa.rekrutmen.info' => $this->trail(['Daftar Rekrutmen', 'mahasiswa.rekrutmen.index'], ['Informasi Rekrutmen']),

@@ -746,9 +746,8 @@
                                     <label
                                         @dragover.prevent
                                         @drop.prevent="
-                                            tetapkanBerkas(
-                                                $event.dataTransfer.files,
-                                            )
+                                            window.rekrutmenValidateDroppedFiles($refs.berkasJawaban, $event.dataTransfer.files)
+                                                .then(files => files && tetapkanBerkas(files))
                                         "
                                         :class="berkasBaru.length
                                             ? 'border-emerald-300 bg-emerald-50'
@@ -784,6 +783,9 @@
                                             name="file_jawaban[]"
                                             multiple
                                             class="sr-only"
+                                            :accept="(tugasAktif?.tipe_jawaban_tugas || 'pdf,doc,docx').split(',')
+                                                .flatMap((format) => format.trim() === 'word' ? ['.doc', '.docx'] : format.trim() === 'excel' ? ['.xls', '.xlsx'] : ['.' + format.trim()])
+                                                .join(',')"
                                         />
                                     </label>
 

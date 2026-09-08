@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Organisasi;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreRecruitmentRequest;
 use App\Models\Mahasiswa;
 use App\Models\Panitia;
 use App\Models\PeriodeRekrutmen;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -17,16 +17,8 @@ class BukaRekrutmenController extends Controller
         return view('organisasi.buka-rekrutmen.index');
     }
 
-    public function storeInisiasi(Request $request)
+    public function storeInisiasi(StoreRecruitmentRequest $request)
     {
-        // 1. Validasi Input Dasar
-        $request->validate([
-            'tahun_periode' => 'required|string',
-            'nim_panitia' => 'required|array|min:1',
-            'nim_panitia.*' => ['required', 'regex:/^\d{9}$/'],
-            'nim_panitia.*.regex' => 'NIM panitia tidak valid. Pastikan berisi tepat 9 digit angka.',
-        ]);
-
         $organisasiId = Auth::guard('organisasi')->id();
 
         // 2. CEK VALDASI : Apakah ada rekrutmen yang SEDANG BERJALAN AKTIF (status_aktif = 1)
@@ -35,7 +27,14 @@ class BukaRekrutmenController extends Controller
             ->first();
 
         if ($rekrutmenAktif) {
-            return back()->withInput()->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen sedang berlangsung. Lakukan penyelesaian atau non-aktifkan terlebih dahulu.');
+            return back()
+                ->withInput()
+                ->with('rekrutmen_sedang_berjalan', 'Terdapat rekrutmen sedang berlangsung. Lakukan penyelesaian atau non-aktifkan terlebih dahulu.')
+                ->with('flash_alert', [
+                    'icon' => 'warning',
+                    'title' => 'Rekrutmen masih berjalan',
+                    'text' => 'Selesaikan atau tutup rekrutmen aktif sebelum membuka periode baru.',
+                ]);
         }
 
         DB::beginTransaction();
@@ -74,6 +73,11 @@ class BukaRekrutmenController extends Controller
                 'success_inisiasi' => true,
                 'periode_id' => $periode->id,
                 'tahun_periode' => $periode->tahun_periode,
+                'flash_alert' => [
+                    'icon' => 'success',
+                    'title' => 'Rekrutmen berhasil dibuka',
+                    'text' => 'Periode rekrutmen telah dibuat. Lengkapi informasi dan tahapan seleksi berikutnya.',
+                ],
             ]);
 
         } catch (\Exception $e) {
@@ -81,7 +85,13 @@ class BukaRekrutmenController extends Controller
 
             report($e);
 
-            return back()->withInput()->with('error_server', 'Gagal menyimpan data. Silakan coba lagi.');
+            return back()->withInput()
+                ->with('error_server', 'Gagal menyimpan data. Silakan coba lagi.')
+                ->with('flash_alert', [
+                    'icon' => 'error',
+                    'title' => 'Rekrutmen belum dapat dibuka',
+                    'text' => 'Data tidak dapat disimpan. Periksa kembali isian Anda lalu coba lagi.',
+                ]);
         }
     }
 

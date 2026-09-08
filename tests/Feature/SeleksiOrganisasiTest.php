@@ -13,6 +13,7 @@ use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
 use App\Models\Tugas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -725,17 +726,11 @@ class SeleksiOrganisasiTest extends TestCase
                 'nama_jabatan' => ['Sekretaris'],
                 'tahapan' => [
                     [
-                        'jenis_tahapan' => 'pengumuman',
-                        'nama_tahapan' => 'Pengumuman Pembukaan',
-                        'deskripsi' => 'Informasi pembukaan rekrutmen.',
-                        'waktu_pengumuman' => '2026-09-10T08:00',
-                    ],
-                    [
                         'jenis_tahapan' => 'seleksi',
-                        'nama_tahapan' => 'Seleksi Administrasi',
-                        'deskripsi' => 'Pemeriksaan dokumen pendaftar.',
-                        'tanggal_mulai' => '2026-09-11T08:00',
-                        'tanggal_selesai' => '2026-09-12T17:00',
+                        'nama_tahapan' => 'Pendaftaran',
+                        'deskripsi' => 'Pengisian formulir pendaftaran.',
+                        'tanggal_mulai' => '2026-09-10T08:00',
+                        'tanggal_selesai' => '2026-09-10T17:00',
                         'metode_distribusi' => 'sama',
                         'tugas' => [[
                             'nama_jabatan' => 'Sekretaris',
@@ -743,21 +738,76 @@ class SeleksiOrganisasiTest extends TestCase
                             'tipe_tugas' => 'pengisian_form',
                         ]],
                     ],
+                    [
+                        'jenis_tahapan' => 'pengumuman',
+                        'nama_tahapan' => 'Pengumuman Pembukaan',
+                        'deskripsi' => 'Informasi pembukaan rekrutmen.',
+                        'waktu_pengumuman' => '2026-09-11T08:00',
+                    ],
                 ],
             ]);
 
         $response->assertRedirect(route('organisasi.dashboard'));
 
         $pengumuman = Tahapan::query()->where('nama_tahapan', 'Pengumuman Pembukaan')->firstOrFail();
-        $seleksi = Tahapan::query()->where('nama_tahapan', 'Seleksi Administrasi')->firstOrFail();
+        $seleksi = Tahapan::query()->where('nama_tahapan', 'Pendaftaran')->firstOrFail();
 
         $this->assertSame('pengumuman', $pengumuman->jenis_tahapan);
         $this->assertSame($pengumuman->waktu_mulai->format('Y-m-d H:i'), $pengumuman->waktu_berakhir->format('Y-m-d H:i'));
         $this->assertSame('seleksi', $seleksi->jenis_tahapan);
-        $this->assertSame('2026-09-11 08:00', $seleksi->waktu_mulai->format('Y-m-d H:i'));
-        $this->assertSame('2026-09-12 17:00', $seleksi->waktu_berakhir->format('Y-m-d H:i'));
+        $this->assertSame('2026-09-10 08:00', $seleksi->waktu_mulai->format('Y-m-d H:i'));
+        $this->assertSame('2026-09-10 17:00', $seleksi->waktu_berakhir->format('Y-m-d H:i'));
         $this->assertSame(0, $pengumuman->tugas()->count());
         $this->assertSame(1, $seleksi->tugas()->count());
+    }
+
+    public function test_first_stage_cannot_be_changed_to_an_announcement_on_the_server(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.store_update', $periode), [
+                'slogan' => 'Bergabung Bersama Kami',
+                'deskripsi_rekrutmen' => 'Rekrutmen pengurus periode baru.',
+                'nama_jabatan' => ['Sekretaris'],
+                'tahapan' => [[
+                    'jenis_tahapan' => 'pengumuman',
+                    'nama_tahapan' => 'Pengumuman Tidak Valid',
+                    'deskripsi' => 'Tahap pertama tidak boleh berupa pengumuman.',
+                    'waktu_pengumuman' => '2026-09-10T08:00',
+                ]],
+            ])
+            ->assertSessionHasErrors('tahapan.0.jenis_tahapan');
+
+        $this->assertDatabaseMissing('tahapan', [
+            'periode_rekrutmen_id' => $periode->id,
+            'nama_tahapan' => 'Pengumuman Tidak Valid',
+        ]);
+    }
+
+    public function test_banner_with_an_unapproved_extension_is_rejected_before_it_is_stored(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.store_update', $periode), [
+                'slogan' => 'Bergabung Bersama Kami',
+                'deskripsi_rekrutmen' => 'Rekrutmen pengurus periode baru.',
+                'banner' => UploadedFile::fake()->createWithContent('gambar-berbahaya.jiff', 'bukan gambar'),
+                'nama_jabatan' => ['Sekretaris'],
+                'tahapan' => [[
+                    'jenis_tahapan' => 'seleksi',
+                    'nama_tahapan' => 'Pendaftaran',
+                    'deskripsi' => 'Pengisian formulir pendaftaran.',
+                    'tanggal_mulai' => '2026-09-10T08:00',
+                    'tanggal_selesai' => '2026-09-10T17:00',
+                ]],
+            ])
+            ->assertSessionHasErrors('banner');
+
+        $this->assertNull($periode->fresh()->lampiran_banner);
     }
 
     public function test_panitia_cannot_open_student_workspace_routes(): void

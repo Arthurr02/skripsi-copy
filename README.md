@@ -1,58 +1,180 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Rekrutmen Ormawa
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web pengelolaan rekrutmen organisasi mahasiswa Polstat STIS. Login memakai Google OAuth untuk akun kampus, dengan ruang kerja terpisah untuk organisasi, panitia, dan mahasiswa.
 
-## About Laravel
+## Kebutuhan server
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.3+ dengan `mbstring`, `openssl`, `pdo`, `pdo_mysql`, `fileinfo`, `xml`, `zip`, dan `ctype`.
+- Composer 2, Node.js 20+, npm, serta MySQL/MariaDB.
+- Nginx atau Apache, HTTPS, dan kredensial Google OAuth.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+> Document root web server **harus** diarahkan ke folder `public`, bukan root repository.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Deploy dari GitHub
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Ganti URL contoh dengan URL repository GitHub aplikasi.
 
 ```bash
-composer require laravel/boost --dev
+git clone https://github.com/USERNAME/NAMA-REPOSITORY.git rekrutmen-ormawa
+cd rekrutmen-ormawa
+git checkout main
 
-php artisan boost:install
+composer install --no-dev --prefer-dist --optimize-autoloader
+npm ci
+npm run build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Salin template environment lalu buat application key.
 
-## Contributing
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Untuk Windows PowerShell:
 
-## Code of Conduct
+```powershell
+Copy-Item .env.example .env
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Konfigurasi production
 
-## Security Vulnerabilities
+Edit `.env` di server. Jangan pernah mengunggah file ini ke GitHub.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```dotenv
+APP_NAME="Sistem Rekrutmen Ormawa"
+APP_ENV=production
+APP_KEY=             # diisi oleh php artisan key:generate
+APP_DEBUG=false
+APP_URL=https://rekrutmen.contoh.ac.id
+APP_TIMEZONE=Asia/Jakarta
 
-## License
+LOG_CHANNEL=stack
+LOG_LEVEL=error
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=rekrutmen_ormawa
+DB_USERNAME=database_user
+DB_PASSWORD=database_password_yang_kuat
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=local
+
+GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=isi_client_secret_google
+GOOGLE_CLIENT_REDIRECT=https://rekrutmen.contoh.ac.id/auth/google/callback
+```
+
+Buat database kosong sesuai `DB_DATABASE`, lalu jalankan:
+
+```bash
+php artisan migrate --force
+php artisan storage:link
+```
+
+Jika database benar-benar baru dan organisasi awal belum tersedia, jalankan seeder sekali saja:
+
+```bash
+php artisan db:seed --class=OrganisasiSeeder --force
+```
+
+Seeder menambahkan organisasi DPM dan BEM. Jangan menjalankannya kembali pada database yang sudah memiliki data organisasi.
+
+Untuk memberi akses role Dosen, tambahkan nama dan email kampusnya ke tabel `dosen` (misalnya melalui phpMyAdmin atau tinker). Email harus sama dengan akun Google yang digunakan untuk login:
+
+```bash
+php artisan tinker --execute="App\\Models\\Dosen::firstOrCreate(['email' => 'nama.dosen@stis.ac.id'], ['nama' => 'Nama Dosen'])"
+```
+
+## Konfigurasi Google OAuth
+
+Di Google Cloud Console, buat OAuth Client ID jenis **Web application**, lalu tambahkan:
+
+- Authorized JavaScript origin: `https://rekrutmen.contoh.ac.id`
+- Authorized redirect URI: `https://rekrutmen.contoh.ac.id/auth/google/callback`
+
+Salin Client ID, Client Secret, dan redirect URI ke variabel `GOOGLE_*` pada `.env`. Mahasiswa hanya dapat masuk dengan format email `NIM@stis.ac.id`; akun organisasi harus tersedia pada kolom `organisasi.email_kampus`.
+
+## Permission Linux
+
+Jalankan dari root repository dan sesuaikan pengguna web server bila bukan `www-data`.
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R ug+rwx storage bootstrap/cache
+```
+
+## Konfigurasi Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name rekrutmen.contoh.ac.id;
+    root /var/www/rekrutmen-ormawa/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+```
+
+Gunakan HTTPS, misalnya dengan Certbot, sebelum mengaktifkan Google OAuth di domain produksi.
+
+## Optimasi produksi
+
+Jalankan setelah `.env` final.
+
+```bash
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
+php artisan view:cache
+```
+
+## Memperbarui aplikasi dari GitHub
+
+Cadangkan database, kemudian jalankan:
+
+```bash
+php artisan down
+git pull origin main
+composer install --no-dev --prefer-dist --optimize-autoloader
+npm ci
+npm run build
+php artisan migrate --force
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
+php artisan view:cache
+php artisan up
+```
+
+Apabila update gagal, jangan menjalankan `php artisan up` sebelum error ditangani. Periksa `storage/logs/laravel.log` dan pulihkan database bila diperlukan.
+
+## Pemeriksaan sebelum go-live
+
+```bash
+php artisan test
+npm run build
+```
+
+Pastikan `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` dan `GOOGLE_CLIENT_REDIRECT` memakai domain HTTPS yang sama, serta folder `storage` dan `bootstrap/cache` dapat ditulis web server.

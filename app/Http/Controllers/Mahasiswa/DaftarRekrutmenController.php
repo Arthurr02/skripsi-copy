@@ -9,6 +9,7 @@ use App\Models\PengumpulanTugas;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
 use App\Models\Tugas;
+use App\Rules\SafeUploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -181,7 +182,7 @@ class DaftarRekrutmenController extends Controller
             'jabatan_1_id' => 'required|integer',
             'jabatan_2_id' => 'nullable|integer|different:jabatan_1_id',
             'dynamic_answers' => 'nullable|array',
-            'file_berkas' => ['nullable', 'file', 'max:5120'],
+            'file_berkas' => ['nullable'],
         ];
 
         $customMessages = [
@@ -237,7 +238,10 @@ class DaftarRekrutmenController extends Controller
 
         $perluBerkasUtama = $tugas
             && ($skemaForm === [] || $tugas->tipe_tugas === 'unggah_berkas');
-        $rules['file_berkas'][0] = $perluBerkasUtama ? 'required' : 'nullable';
+        $rules['file_berkas'] = [
+            $perluBerkasUtama ? 'required' : 'nullable',
+            new SafeUploadedFile($this->formatBerkasTugas($tugas)),
+        ];
 
         // 4. Jalankan validasi teks/form lalu validasi unggahan tiap pertanyaan file.
         $request->validate($rules, $customMessages);
@@ -377,34 +381,48 @@ class DaftarRekrutmenController extends Controller
     {
         return collect((array) (($request->allFiles()['dynamic_files'][$namaBidang] ?? [])))
             ->flatten()
-            ->filter(fn ($file) => $file instanceof UploadedFile && $file->isValid())
+            ->filter(fn ($file) => $file instanceof UploadedFile)
             ->values()
             ->all();
     }
 
     private function validasiBerkasPendaftaran(array $berkas, array $field): void
     {
-        $aturan = ['file', 'max:5120'];
-        $format = collect($field['allowed_formats'] ?? [])
-            ->flatMap(fn ($ekstensi) => match (strtolower($ekstensi)) {
+        $aturan = [new SafeUploadedFile($this->formatBerkasForm($field))];
+
+        foreach ($berkas as $file) {
+            Validator::make(['berkas' => $file], ['berkas' => $aturan], [
+                'berkas.*' => 'Berkas '.($field['label'] ?? 'jawaban').' tidak aman atau formatnya tidak sesuai.',
+            ])->validate();
+        }
+    }
+
+    /** @return array<int, string> */
+    private function formatBerkasForm(array $field): array
+    {
+        return $this->normalisasiFormatBerkas($field['allowed_formats'] ?? []);
+    }
+
+    /** @return array<int, string> */
+    private function formatBerkasTugas(?Tugas $tugas): array
+    {
+        return $this->normalisasiFormatBerkas(explode(',', (string) $tugas?->tipe_jawaban_tugas));
+    }
+
+    /** @param array<int, string> $format */
+    private function normalisasiFormatBerkas(array $format): array
+    {
+        $hasil = collect($format)
+            ->flatMap(fn ($ekstensi) => match (strtolower(trim($ekstensi))) {
                 'word' => ['doc', 'docx'],
                 'excel' => ['xls', 'xlsx'],
-                default => [strtolower($ekstensi)],
+                default => [strtolower(trim($ekstensi))],
             })
-            ->filter()
+            ->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx'])
             ->unique()
             ->values()
             ->all();
 
-        if ($format !== []) {
-            $aturan[] = 'mimes:'.implode(',', $format);
-        }
-
-        foreach ($berkas as $file) {
-            Validator::make(['berkas' => $file], ['berkas' => $aturan], [
-                'berkas.mimes' => 'Format berkas '.($field['label'] ?? 'jawaban').' tidak sesuai.',
-                'berkas.max' => 'Ukuran setiap berkas '.($field['label'] ?? 'jawaban').' maksimal 5 MB.',
-            ])->validate();
-        }
+        return $hasil !== [] ? $hasil : ['pdf', 'doc', 'docx'];
     }
 }

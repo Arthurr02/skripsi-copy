@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Mahasiswa;
+use App\Models\Dosen;
 use App\Models\Organisasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,12 @@ class AuthController extends Controller
             $email = $googleUser->email;
             $avatarUrl = $googleUser->avatar;
 
+            // A Google callback always starts one fresh role session. Explicitly
+            // clearing every guard prevents a stale role from sharing navigation
+            // state or authorization with the newly authenticated account.
+            Auth::guard('mahasiswa')->logout();
+            Auth::guard('organisasi')->logout();
+            Auth::guard('dosen')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
@@ -44,14 +51,24 @@ class AuthController extends Controller
                 return redirect()->route('organisasi.dashboard');
             }
 
+            // Dosen hanya dapat masuk apabila alamat Google-nya sudah didaftarkan
+            // oleh administrator pada tabel dosen.
+            $dosen = Dosen::query()->where('email', $email)->first();
+            if ($dosen) {
+                Auth::guard('dosen')->login($dosen);
+                $request->session()->regenerate();
+
+                return redirect()->route('dosen.dashboard');
+            }
+
             // =====================
             // Login Mahasiswa
             // =====================
             $nim = explode('@', $email)[0];
 
-            if (! preg_match('/^\d{9}@stis\.ac\.id$/i', $email)) {
+            if (!preg_match('/^\d{9}@stis\.ac\.id$/i', $email)) {
                 return redirect('/')
-                    ->with('error', 'Mohon gunakan akun Google kampus dengan format NIM@stis.ac.id.');
+                    ->with('error', 'Mohon gunakan akun Google kampus @stis.ac.id.');
             }
 
             $mahasiswa = Mahasiswa::updateOrCreate(
@@ -88,6 +105,7 @@ class AuthController extends Controller
     {
         Auth::guard('mahasiswa')->logout();
         Auth::guard('organisasi')->logout();
+        Auth::guard('dosen')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

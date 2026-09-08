@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\SafeUploadedFile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -20,8 +21,8 @@ class UpdateRecruitmentInformationRequest extends FormRequest
         return [
             'slogan' => ['required', 'string'],
             'deskripsi_rekrutmen' => ['required', 'string'],
-            'banner' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png', 'mimes:jpg,jpeg,png', 'max:2048'],
-            'buku_pedoman' => ['nullable', 'file', 'mimetypes:application/pdf', 'mimes:pdf', 'max:5120'],
+            'banner' => ['nullable', new SafeUploadedFile(['jpg', 'jpeg', 'png'], 2048)],
+            'buku_pedoman' => ['nullable', new SafeUploadedFile(['pdf'])],
             'nama_posisi' => ['nullable', 'array'],
             'nama_posisi.*' => ['nullable', 'string'],
             'nama_jabatan' => ['required', 'array', 'min:1'],
@@ -39,8 +40,7 @@ class UpdateRecruitmentInformationRequest extends FormRequest
             'tahapan.*.tugas.*.jabatan_id' => ['nullable', 'integer'],
             'tahapan.*.tugas.*.id' => ['nullable', 'integer'],
             'tahapan.*.tugas.*.deskripsi_tugas' => ['nullable', 'string'],
-            'tahapan_lampiran_*' => ['nullable', 'file', 'mimetypes:application/pdf', 'mimes:pdf', 'max:5120'],
-            'tahapan.*.tugas.*.lampiran_files.*' => ['nullable', 'file', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'mimes:pdf,doc,docx', 'max:2048'],
+            'tahapan.*.tugas.*.lampiran_files.*' => ['nullable', new SafeUploadedFile(['pdf', 'doc', 'docx'], 2048)],
         ];
     }
 
@@ -49,8 +49,27 @@ class UpdateRecruitmentInformationRequest extends FormRequest
         return [function (Validator $validator): void {
             $tahapan = $this->input('tahapan', []);
 
+            if (($tahapan[0]['jenis_tahapan'] ?? null) !== 'seleksi') {
+                $validator->errors()->add(
+                    'tahapan.0.jenis_tahapan',
+                    'Tahapan pertama wajib berupa Tahapan Pendaftaran / Seleksi dan tidak dapat diubah.',
+                );
+            }
+
             if (collect($tahapan)->where('jenis_tahapan', 'seleksi')->isEmpty()) {
                 $validator->errors()->add('tahapan', 'Tambahkan minimal satu tahapan seleksi.');
+            }
+
+            foreach ($this->allFiles() as $attribute => $file) {
+                if (! str_starts_with($attribute, 'tahapan_lampiran_') || ! $file) {
+                    continue;
+                }
+
+                (new SafeUploadedFile(['pdf']))->validate(
+                    $attribute,
+                    $file,
+                    fn (string $message) => $validator->errors()->add($attribute, $message),
+                );
             }
 
             foreach ($tahapan as $index => $data) {

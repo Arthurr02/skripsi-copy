@@ -6,7 +6,10 @@ use App\Http\Controllers\Mahasiswa\DashboardController as MahasiswaDashboardCont
 use App\Http\Controllers\Mahasiswa\RekrutmenDiikutiController;
 use App\Http\Controllers\Mahasiswa\RiwayatPendaftaranController;
 use App\Http\Controllers\Organisasi\BukaRekrutmenController;
+use App\Http\Controllers\Organisasi\DaftarAnggotaController;
 use App\Http\Controllers\Organisasi\DashboardController as OrganisasiDashboardController;
+use App\Http\Controllers\Dosen\DashboardController as DosenDashboardController;
+use App\Http\Controllers\Dosen\DataOrganisasiController;
 use App\Http\Controllers\Panitia\DashboardController as PanitiaDashboardController;
 use App\Http\Controllers\Rekrutmen\PanitiaRekrutmenController;
 use App\Http\Controllers\Rekrutmen\PendaftarController;
@@ -31,6 +34,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // ==========================================
 Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')->group(function () {
     Route::get('/dashboard', OrganisasiDashboardController::class)->name('dashboard');
+    Route::get('/daftar-anggota', [DaftarAnggotaController::class, 'index'])->name('daftar-anggota.index');
+    Route::post('/daftar-anggota', [DaftarAnggotaController::class, 'store'])->name('daftar-anggota.store');
+    Route::get('/daftar-anggota/{daftarAnggota}/unduh', [DaftarAnggotaController::class, 'download'])->name('daftar-anggota.download');
 
     Route::prefix('buka-rekrutmen')->name('buka-rekrutmen.')->group(function () {
         Route::get('/', [BukaRekrutmenController::class, 'index'])->name('index');
@@ -70,7 +76,16 @@ Route::middleware('auth:organisasi')->prefix('organisasi')->name('organisasi.')-
 });
 
 // ==========================================
-// 3. GRUP PANITIA (Anggota Organisasi)
+// 3. GRUP DOSEN
+// ==========================================
+Route::middleware('auth:dosen')->prefix('dosen')->name('dosen.')->group(function () {
+    Route::get('/dashboard', DosenDashboardController::class)->name('dashboard');
+    Route::get('/data-organisasi', [DataOrganisasiController::class, 'index'])->name('data-organisasi.index');
+    Route::get('/data-organisasi/{daftarAnggota}/unduh', [DataOrganisasiController::class, 'download'])->name('data-organisasi.download');
+});
+
+// ==========================================
+// 4. GRUP PANITIA (Anggota Organisasi)
 // ==========================================
 Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('panitia.')->group(function () {
     Route::get('/dashboard', PanitiaDashboardController::class)->name('dashboard');
@@ -98,7 +113,7 @@ Route::middleware(['auth:mahasiswa', 'is_panitia'])->prefix('panitia')->name('pa
 });
 
 // ==========================================
-// 4. GRUP MAHASISWA BIASA (Pendaftar) - FIXED
+// 5. GRUP MAHASISWA BIASA (Pendaftar) - FIXED
 // ==========================================
 Route::middleware(['auth', 'mahasiswa_biasa'])->prefix('mahasiswa')->name('mahasiswa.')->group(function () {
 

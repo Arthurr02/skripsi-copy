@@ -50,6 +50,30 @@
             </div>
         @endif
 
+        @if ($isOrganisasi)
+            <div class="px-3">
+                <a
+                    href="{{ route('organisasi.daftar-anggota.index') }}"
+                    class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 border-l-[3px] {{ request()->routeIs('organisasi.daftar-anggota.*') ? 'bg-blue-50 text-blue-700 border-blue-600 font-bold' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                >
+                    <svg class="w-5 h-5 mr-3 {{ request()->routeIs('organisasi.daftar-anggota.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16V4m0 0L8 8m4-4 4 4M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" /></svg>
+                    Upload Daftar Anggota
+                </a>
+            </div>
+        @endif
+
+        @if ($isDosen)
+            <div class="px-3">
+                <a
+                    href="{{ route('dosen.data-organisasi.index') }}"
+                    class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 border-l-[3px] {{ request()->routeIs('dosen.data-organisasi.*') ? 'bg-blue-50 text-blue-700 border-blue-600 font-bold' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                >
+                    <svg class="w-5 h-5 mr-3 {{ request()->routeIs('dosen.data-organisasi.*') ? 'text-blue-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 0-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" /></svg>
+                    Data Organisasi
+                </a>
+            </div>
+        @endif
+
         @if ($isMahasiswaBiasa && !$isOrganisasi)
             <div class="px-3 space-y-1">
                 <a

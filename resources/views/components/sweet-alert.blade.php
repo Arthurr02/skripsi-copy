@@ -38,6 +38,11 @@
 
             window.Swal = standardizeInstance(window.Swal);
             window.rekrutmenAlert = (options) => window.Swal.fire(options);
+
+            const flashAlert = @json(session('flash_alert'));
+            if (flashAlert) {
+                document.addEventListener('DOMContentLoaded', () => window.rekrutmenAlert(flashAlert), { once: true });
+            }
         })();
     </script>
 @endonce

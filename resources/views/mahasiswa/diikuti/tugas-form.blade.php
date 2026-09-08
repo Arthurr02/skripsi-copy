@@ -293,10 +293,8 @@
                                                 "
                                                 @dragover.prevent
                                                 @drop.prevent="
-                                                    terimaDrop(
-                                                        $event.dataTransfer
-                                                            .files,
-                                                    )
+                                                    window.rekrutmenValidateDroppedFiles($refs.input, $event.dataTransfer.files)
+                                                        .then(files => files && terimaDrop(files))
                                                 "
                                                 :class="baru.length
                                                     ? 'border-blue-400 bg-blue-50'
@@ -315,7 +313,7 @@
                                                     name="jawaban_file[{{ $fieldName }}][]"
                                                     multiple
                                                     class="sr-only"
-                                                    accept="{{ collect($item['allowed_formats'] ?? [])->flatMap(fn ($format) => $format === 'word' ? ['.doc,.docx'] : ($format === 'excel' ? ['.xls,.xlsx'] : ['.' . $format]))->implode(',') }}"
+                                                    accept="{{ collect($item['allowed_formats'] ?: ['pdf', 'doc', 'docx'])->flatMap(fn ($format) => $format === 'word' ? ['.doc,.docx'] : ($format === 'excel' ? ['.xls,.xlsx'] : ['.' . $format]))->implode(',') }}"
                                                     {{
                                                         $isRequired && empty($berkasTersimpan)
                                                             ? 'required'

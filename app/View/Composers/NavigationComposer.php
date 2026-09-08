@@ -13,13 +13,15 @@ class NavigationComposer
     public function compose(View $view): void
     {
         $isOrganisasi = Auth::guard('organisasi')->check();
+        $isDosen = Auth::guard('dosen')->check();
         $currentUser = $isOrganisasi
             ? Auth::guard('organisasi')->user()
-            : Auth::guard('mahasiswa')->user();
+            : ($isDosen ? Auth::guard('dosen')->user() : Auth::guard('mahasiswa')->user());
         $isPanitia = ! $isOrganisasi
+            && ! $isDosen
             && $currentUser
             && Panitia::query()->where('nim', $currentUser->nim)->exists();
-        $isMahasiswaBiasa = ! $isOrganisasi && ! $isPanitia;
+        $isMahasiswaBiasa = ! $isOrganisasi && ! $isDosen && ! $isPanitia;
 
         $rekrutmenAktifTersedia = match (true) {
             $isOrganisasi => PeriodeRekrutmen::query()
@@ -35,7 +37,7 @@ class NavigationComposer
 
         $userName = $isOrganisasi
             ? ($currentUser?->nama_organisasi ?? 'Organisasi')
-            : ($currentUser?->nama_lengkap ?? 'Mahasiswa');
+            : ($isDosen ? ($currentUser?->nama ?? 'Dosen') : ($currentUser?->nama_lengkap ?? 'Mahasiswa'));
         $userAvatar = $currentUser?->avatar_google;
         if (blank($userAvatar)) {
             $userAvatar = 'https://ui-avatars.com/api/?name='.urlencode($userName)
@@ -45,14 +47,15 @@ class NavigationComposer
         $view->with([
             'currentUser' => $currentUser,
             'isOrganisasi' => $isOrganisasi,
+            'isDosen' => $isDosen,
             'isPanitia' => $isPanitia,
             'isMahasiswaBiasa' => $isMahasiswaBiasa,
-            'dashboardRoute' => $isOrganisasi ? 'organisasi.dashboard' : ($isPanitia ? 'panitia.dashboard' : 'mahasiswa.dashboard'),
-            'routePrefix' => $isOrganisasi ? 'organisasi.' : ($isPanitia ? 'panitia.' : 'mahasiswa.'),
+            'dashboardRoute' => $isOrganisasi ? 'organisasi.dashboard' : ($isDosen ? 'dosen.dashboard' : ($isPanitia ? 'panitia.dashboard' : 'mahasiswa.dashboard')),
+            'routePrefix' => $isOrganisasi ? 'organisasi.' : ($isDosen ? 'dosen.' : ($isPanitia ? 'panitia.' : 'mahasiswa.')),
             'rekrutmenAktifTersedia' => $rekrutmenAktifTersedia,
             'userName' => $userName,
             'userAvatar' => $userAvatar,
-            'userRole' => $isOrganisasi ? 'Organisasi' : ($isPanitia ? 'Panitia Rekrutmen' : 'Mahasiswa'),
+            'userRole' => $isOrganisasi ? 'Organisasi' : ($isDosen ? 'Dosen' : ($isPanitia ? 'Panitia Rekrutmen' : 'Mahasiswa')),
         ]);
     }
 }

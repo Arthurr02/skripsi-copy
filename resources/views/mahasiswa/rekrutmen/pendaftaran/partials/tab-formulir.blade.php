@@ -27,7 +27,11 @@
                         Formulir Daftar Formasi:
                         <span
                             class="text-blue-700"
-                            x-text="pilihan1Position && pilihan1Name ? pilihan1Position + ' | ' + pilihan1Name : pilihan1Name"
+                            x-text="
+                                pilihan1Position && pilihan1Name
+                                    ? pilihan1Position + ' | ' + pilihan1Name
+                                    : pilihan1Name
+                            "
                         ></span>
                     </div>
                 </h3>
@@ -274,9 +278,17 @@
                                             "
                                             @dragover.prevent
                                             @drop.prevent="
-                                                terimaDrop(
-                                                    $event.dataTransfer.files,
-                                                )
+                                                window
+                                                    .rekrutmenValidateDroppedFiles(
+                                                        $refs.input,
+                                                        $event.dataTransfer
+                                                            .files,
+                                                    )
+                                                    .then(
+                                                        (files) =>
+                                                            files &&
+                                                            terimaDrop(files),
+                                                    )
                                             "
                                             :class="berkas.length
                                                 ? 'border-blue-400 bg-blue-50'
@@ -294,8 +306,12 @@
                                                 :name="`dynamic_files[isian_${fIdx}][]`"
                                                 multiple
                                                 class="sr-only"
-                                                :accept="(
+                                                :accept="((
                                                     field.allowed_formats || []
+                                                ).length
+                                                    ? field.allowed_formats ||
+                                                      []
+                                                    : ['pdf', 'doc', 'docx']
                                                 )
                                                     .flatMap((format) =>
                                                         format === 'word'
@@ -445,7 +461,14 @@
                         @keydown.enter.prevent="$refs.input.click()"
                         @keydown.space.prevent="$refs.input.click()"
                         @dragover.prevent
-                        @drop.prevent="terimaDrop($event.dataTransfer.files)"
+                        @drop.prevent="
+                            window
+                                .rekrutmenValidateDroppedFiles(
+                                    $refs.input,
+                                    $event.dataTransfer.files,
+                                )
+                                .then((files) => files && terimaDrop(files))
+                        "
                         :class="berkas.length
                             ? 'border-blue-400 bg-blue-50'
                             : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50'"
@@ -457,6 +480,18 @@
                             name="file_berkas"
                             type="file"
                             class="sr-only"
+                            :accept="((currentTugas?.format_proyek || []).length
+                                ? currentTugas.format_proyek
+                                : ['pdf', 'doc', 'docx']
+                            )
+                                .flatMap((format) =>
+                                    format === 'word'
+                                        ? ['.doc', '.docx']
+                                        : format === 'excel'
+                                          ? ['.xls', '.xlsx']
+                                          : ['.' + format.trim()],
+                                )
+                                .join(',')"
                             @change="setBerkas($event.target.files)"
                             :required="(!currentTugas?.form ||
                                 currentTugas.form.length === 0 ||

@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // 2. Ubah 'extends Model' menjadi 'extends Authenticatable'
 class Organisasi extends Authenticatable
@@ -31,5 +32,10 @@ class Organisasi extends Authenticatable
     public function getAuthPassword()
     {
         return null;
+    }
+
+    public function daftarAnggota(): HasMany
+    {
+        return $this->hasMany(DaftarAnggota::class, 'organisasi_id');
     }
 }

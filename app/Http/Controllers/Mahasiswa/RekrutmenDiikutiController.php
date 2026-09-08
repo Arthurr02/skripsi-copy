@@ -8,6 +8,7 @@ use App\Models\Pendaftaran;
 use App\Models\PengumpulanTugas;
 use App\Models\Tahapan;
 use App\Models\Tugas;
+use App\Rules\SafeUploadedFile;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -529,15 +530,10 @@ class RekrutmenDiikutiController extends Controller
                     ]);
                 }
 
-                $aturanPerBerkas = ['file', 'max:5120'];
-                $format = $this->formatBerkasForm($item['allowed_formats'] ?? []);
-                if ($format !== []) {
-                    $aturanPerBerkas[] = 'mimes:'.implode(',', $format);
-                }
+                $aturanPerBerkas = [new SafeUploadedFile($this->formatBerkasForm($item['allowed_formats'] ?? []))];
                 foreach ($berkasMasuk as $berkas) {
                     Validator::make(['berkas' => $berkas], ['berkas' => $aturanPerBerkas], [
-                        'berkas.mimes' => 'Format berkas '.($item['label'] ?? 'jawaban').' tidak sesuai.',
-                        'berkas.max' => 'Ukuran setiap berkas '.($item['label'] ?? 'jawaban').' maksimal 5 MB.',
+                        'berkas.*' => 'Berkas '.($item['label'] ?? 'jawaban').' tidak aman atau formatnya tidak sesuai.',
                     ])->validate();
                 }
 
@@ -573,7 +569,7 @@ class RekrutmenDiikutiController extends Controller
                 ? array_intersect($berkasLama, (array) $request->input('berkas_pertahankan', []))
                 : $berkasLama;
             $aturan['file_jawaban'] = [empty($berkasDipertahankan) ? 'required' : 'nullable', 'array'];
-            $aturan['file_jawaban.*'] = ['file', 'max:5120'];
+            $aturan['file_jawaban.*'] = [new SafeUploadedFile($this->formatBerkasTugas($tugas))];
             $pesan['file_jawaban.required'] = 'Silakan pilih berkas jawaban sebelum mengirim tugas.';
             $pesan['file_jawaban.*.max'] = 'Ukuran setiap berkas jawaban maksimal 5 MB.';
         }
@@ -654,11 +650,19 @@ class RekrutmenDiikutiController extends Controller
 
     private function formatBerkasForm(array $format): array
     {
-        return collect($format)->flatMap(fn ($ekstensi) => match (strtolower($ekstensi)) {
+        $hasil = collect($format)->flatMap(fn ($ekstensi) => match (strtolower($ekstensi)) {
             'word' => ['doc', 'docx'],
             'excel' => ['xls', 'xlsx'],
             default => [strtolower($ekstensi)],
-        })->filter()->unique()->values()->all();
+        })->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx'])->filter()->unique()->values()->all();
+
+        return $hasil !== [] ? $hasil : ['pdf', 'doc', 'docx'];
+    }
+
+    /** @return array<int, string> */
+    private function formatBerkasTugas(Tugas $tugas): array
+    {
+        return $this->formatBerkasForm(explode(',', (string) $tugas->tipe_jawaban_tugas));
     }
 
     /** Mengambil unggahan form dinamis, termasuk payload dari skema lama tanpa nama bidang. */
@@ -672,7 +676,7 @@ class RekrutmenDiikutiController extends Controller
 
         return collect((array) $berkas)
             ->flatten()
-            ->filter(fn ($file) => $file instanceof UploadedFile && $file->isValid())
+            ->filter(fn ($file) => $file instanceof UploadedFile)
             ->values()
             ->all();
     }
