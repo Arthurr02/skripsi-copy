@@ -198,21 +198,21 @@
                                             Terdaftar
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                                         </button>
-                                @elseif ($rekrutmen->pendaftaran_terbuka)
-                                    <a
-                                        href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
-                                        class="flex items-center justify-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
-                                    >
-                                        Daftar
+                                    @elseif ($rekrutmen->pendaftaran_terbuka)
+                                        <a
+                                            href="{{ route('mahasiswa.rekrutmen.daftar', $rekrutmen->id) }}"
+                                            class="flex items-center justify-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors text-center gap-1 shadow-sm"
+                                        >
+                                            Daftar
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                         </a>
                                     @else
-                                    <button
+                                        <button
                                             type="button"
                                             disabled
                                             class="flex cursor-not-allowed items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-center text-xs font-bold text-slate-400"
-                                    >
-                                        {{ $rekrutmen->pendaftaran_sudah_berakhir ? 'Pendaftaran Ditutup' : 'Pendaftaran Belum Dibuka' }}
+                                        >
+                                            {{ $rekrutmen->pendaftaran_sudah_berakhir ? 'Pendaftaran Ditutup' : 'Pendaftaran Belum Dibuka' }}
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
                                             </svg>

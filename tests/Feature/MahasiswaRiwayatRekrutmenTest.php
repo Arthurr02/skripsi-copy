@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use ZipArchive;
 
 class MahasiswaRiwayatRekrutmenTest extends TestCase
 {
@@ -73,6 +74,24 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
         [$mahasiswa, $periodeDiikuti] = $this->buatPendaftaran(statusAktif: 0, namaOrganisasi: 'Organisasi Diikuti');
         $periodeTidakDiikuti = $this->buatPeriode('Organisasi Tidak Diikuti', 0);
         $periodeAktif = $this->buatPeriode('Organisasi Masih Aktif', 1);
+        Tahapan::create([
+            'periode_rekrutmen_id' => $periodeTidakDiikuti->id,
+            'jenis_tahapan' => 'seleksi',
+            'nama_tahapan' => 'Seleksi Berkas Arsip',
+            'deskripsi_tahapan' => 'Tahapan seleksi yang telah selesai.',
+            'waktu_mulai' => now()->subDays(4),
+            'waktu_berakhir' => now()->subDays(3),
+            'urutan_tahapan' => 1,
+        ]);
+        Tahapan::create([
+            'periode_rekrutmen_id' => $periodeTidakDiikuti->id,
+            'jenis_tahapan' => 'pengumuman',
+            'nama_tahapan' => 'Pengumuman Arsip',
+            'deskripsi_tahapan' => 'Pengumuman yang telah terbit.',
+            'waktu_mulai' => now()->subDays(2),
+            'waktu_berakhir' => now()->subDays(2),
+            'urutan_tahapan' => 2,
+        ]);
 
         $this->actingAs($mahasiswa)
             ->get(route('mahasiswa.riwayat.index'))
@@ -83,7 +102,16 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
             ->assertSee($periodeTidakDiikuti->organisasi->nama_organisasi)
             ->assertDontSee($periodeAktif->organisasi->nama_organisasi)
             ->assertSee('Lihat Penugasan Terkirim')
-            ->assertSee('Lihat Tahapan yang Telah Berlangsung');
+            ->assertSee('Lihat Tahapan yang Telah Berlangsung')
+            ->assertSee(route('mahasiswa.rekrutmen.info', $periodeDiikuti->id), false);
+
+        $this->actingAs($mahasiswa)
+            ->get(route('mahasiswa.riwayat.tahapan', $periodeTidakDiikuti->id))
+            ->assertOk()
+            ->assertSee('Seleksi Berkas Arsip')
+            ->assertSee('Pengumuman Arsip')
+            ->assertDontSee('Kerjakan Tugas')
+            ->assertDontSee('Lihat Tugas Terkirim');
     }
 
     public function test_first_selection_deadline_locks_registration_in_the_ui_and_on_the_server(): void
@@ -126,7 +154,7 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
             ->assertSessionHas('error_server', 'Pendaftaran telah ditutup karena batas waktu tahapan pertama sudah berakhir.');
     }
 
-    public function test_registration_saves_file_answers_from_dynamic_form_fields(): void
+    public function test_registration_saves_valid_image_answers_from_dynamic_form_fields(): void
     {
         Storage::fake('public');
         [, $periode, $pendaftaran] = $this->buatPendaftaran(statusAktif: 2);
@@ -162,9 +190,9 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
                     ],
                     [
                         'tipe' => 'file',
-                        'label' => 'CV',
+                        'label' => 'Foto diri',
                         'required' => true,
-                        'allowed_formats' => ['pdf'],
+                        'allowed_formats' => ['image'],
                     ],
                 ],
             ],
@@ -178,7 +206,7 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
                     'isian_1' => ['g'],
                 ],
                 'dynamic_files' => [
-                    'isian_2' => [UploadedFile::fake()->createWithContent('cv.pdf', $this->isiPdfValid())],
+                    'isian_2' => [UploadedFile::fake()->image('foto-diri.jpg', 200, 200)],
                 ],
             ])
             ->assertRedirect(route('mahasiswa.rekrutmen.index'));
@@ -198,6 +226,155 @@ class MahasiswaRiwayatRekrutmenTest extends TestCase
         $this->assertCount(1, $jawaban['form']['isian_2']);
         $this->assertStringStartsWith('rekrutmen/jawaban-form/', $jawaban['form']['isian_2'][0]);
         Storage::disk('public')->assertExists($jawaban['form']['isian_2'][0]);
+    }
+
+    public function test_registration_accepts_a_safe_zip_answer_when_the_form_allows_zip(): void
+    {
+        Storage::fake('public');
+        [, $periode, $pendaftaran] = $this->buatPendaftaran(statusAktif: 2);
+        $mahasiswa = Mahasiswa::create([
+            'nim' => '222222225',
+            'email_kampus' => '222222225@stis.ac.id',
+            'nama_lengkap' => 'Mahasiswa ZIP',
+        ]);
+        $tahapan = Tahapan::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'jenis_tahapan' => 'seleksi',
+            'nama_tahapan' => 'Pendaftaran',
+            'waktu_mulai' => now()->subHour(),
+            'waktu_berakhir' => now()->addHour(),
+            'urutan_tahapan' => 1,
+        ]);
+        $tugas = Tugas::create([
+            'tahapan_id' => $tahapan->id,
+            'jabatan_id' => $pendaftaran->jabatan_1_id,
+            'tipe_tugas' => 'pengisian_form',
+            'tipe_jawaban_tugas' => 'form',
+            'lampiran_tugas' => ['form' => [[
+                'tipe' => 'file',
+                'label' => 'Portofolio ZIP',
+                'required' => true,
+                'allowed_formats' => ['zip'],
+            ]]],
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'rekrutmen-zip-');
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true);
+        $this->assertTrue($archive->addFromString('portofolio/catatan.txt', 'Berkas portofolio aman.'));
+        $archive->close();
+
+        try {
+            $this->actingAs($mahasiswa)
+                ->post(route('mahasiswa.rekrutmen.submit', $periode->id), [
+                    'jabatan_1_id' => $pendaftaran->jabatan_1_id,
+                    'dynamic_files' => [
+                        'isian_0' => [new UploadedFile($path, 'portofolio.zip', 'application/zip', null, true)],
+                    ],
+                ])
+                ->assertRedirect(route('mahasiswa.rekrutmen.index'));
+
+            $jawaban = PengumpulanTugas::query()
+                ->where('tugas_id', $tugas->id)
+                ->firstOrFail()
+                ->lampiran_jawaban;
+
+            $this->assertCount(1, $jawaban['form']['isian_0']);
+            Storage::disk('public')->assertExists($jawaban['form']['isian_0'][0]);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_registration_rejects_an_invalid_email_answer_from_the_dynamic_form(): void
+    {
+        [, $periode, $pendaftaran] = $this->buatPendaftaran(statusAktif: 2);
+        $mahasiswa = Mahasiswa::create([
+            'nim' => '222222226',
+            'email_kampus' => '222222226@stis.ac.id',
+            'nama_lengkap' => 'Mahasiswa Validasi Email',
+        ]);
+        $tahapan = Tahapan::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'jenis_tahapan' => 'seleksi',
+            'nama_tahapan' => 'Pendaftaran',
+            'waktu_mulai' => now()->subHour(),
+            'waktu_berakhir' => now()->addHour(),
+            'urutan_tahapan' => 1,
+        ]);
+        Tugas::create([
+            'tahapan_id' => $tahapan->id,
+            'jabatan_id' => $pendaftaran->jabatan_1_id,
+            'tipe_tugas' => 'pengisian_form',
+            'tipe_jawaban_tugas' => 'form',
+            'lampiran_tugas' => ['form' => [[
+                'tipe' => 'email',
+                'label' => 'Email Gmail',
+                'required' => true,
+            ]]],
+        ]);
+
+        $this->actingAs($mahasiswa)
+            ->from(route('mahasiswa.rekrutmen.daftar', $periode->id))
+            ->post(route('mahasiswa.rekrutmen.submit', $periode->id), [
+                'jabatan_1_id' => $pendaftaran->jabatan_1_id,
+                'dynamic_answers' => ['isian_0' => 'alamat-gmail-tidak-valid'],
+            ])
+            ->assertRedirect(route('mahasiswa.rekrutmen.daftar', $periode->id))
+            ->assertSessionHasErrors('dynamic_answers.isian_0');
+
+        $this->assertDatabaseMissing('pendaftaran', ['nim' => $mahasiswa->nim]);
+    }
+
+    public function test_dynamic_task_form_accepts_a_safe_zip_answer_when_zip_is_allowed(): void
+    {
+        Storage::fake('public');
+        [$mahasiswa, $periode, $pendaftaran] = $this->buatPendaftaran(statusAktif: 1);
+        $tahapan = Tahapan::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'jenis_tahapan' => 'seleksi',
+            'nama_tahapan' => 'Pengumpulan Portofolio',
+            'waktu_mulai' => now()->subHour(),
+            'waktu_berakhir' => now()->addHour(),
+            'urutan_tahapan' => 2,
+        ]);
+        $tugas = Tugas::create([
+            'tahapan_id' => $tahapan->id,
+            'jabatan_id' => $pendaftaran->jabatan_1_id,
+            'tipe_tugas' => 'pengisian_form',
+            'tipe_jawaban_tugas' => 'form',
+            'lampiran_tugas' => ['form' => [[
+                'tipe' => 'file',
+                'label' => 'Portofolio ZIP',
+                'required' => true,
+                'allowed_formats' => ['zip'],
+            ]]],
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'tugas-zip-');
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true);
+        $this->assertTrue($archive->addFromString('portofolio/catatan.txt', 'Berkas tugas aman.'));
+        $archive->close();
+
+        try {
+            $this->actingAs($mahasiswa)
+                ->post(route('mahasiswa.rekrutmen.diikuti.tugas_submit', [$pendaftaran->id, $tugas->id]), [
+                    'jawaban_file' => [
+                        'isian_0' => [new UploadedFile($path, 'portofolio.zip', 'application/zip', null, true)],
+                    ],
+                ])
+                ->assertRedirect();
+
+            $jawaban = PengumpulanTugas::query()
+                ->where('pendaftaran_id', $pendaftaran->id)
+                ->where('tugas_id', $tugas->id)
+                ->firstOrFail()
+                ->lampiran_jawaban;
+
+            $this->assertCount(1, $jawaban['form']['isian_0']);
+            Storage::disk('public')->assertExists($jawaban['form']['isian_0'][0]);
+        } finally {
+            @unlink($path);
+        }
     }
 
     public function test_selection_task_submission_is_rejected_at_its_deadline(): void

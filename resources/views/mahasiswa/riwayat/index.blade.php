@@ -286,13 +286,20 @@
                                         </div>
 
                                         <!-- Action Buttons -->
-
-                                        <div class="mt-auto">
+                                        <div
+                                            class="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-2"
+                                        >
+                                            <a
+                                                href="{{ route('mahasiswa.rekrutmen.info', $pendaftaran->pilihanJabatan1->periode_rekrutmen_id) }}"
+                                                class="w-full flex justify-center py-2 px-4 border border-slate-300 bg-white text-xs font-bold text-slate-700 rounded-md hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-sm gap-1.5 items-center"
+                                            >
+                                                Detail Info
+                                            </a>
                                             <a
                                                 href="{{ route('mahasiswa.riwayat.diikuti.tahapan', $pendaftaran->id) }}"
                                                 class="w-full flex justify-center py-2 px-4 bg-blue-600 text-xs font-bold text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm gap-1.5 items-center"
                                             >
-                                                Lihat Penugasan Terkirim
+                                                Tahapan
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0-7 7m7-7H3" /></svg>
                                             </a>
                                         </div>
@@ -490,10 +497,10 @@
                                                 Detail Info
                                             </a>
                                             <a
-                                                href="{{ route('mahasiswa.riwayat.pengumuman', $periode->id) }}"
+                                                href="{{ route('mahasiswa.riwayat.tahapan', $periode->id) }}"
                                                 class="w-full flex justify-center py-2 px-4 bg-slate-800 text-xs font-bold text-white rounded-md hover:bg-slate-900 transition-colors shadow-sm gap-1.5 items-center"
                                             >
-                                                Lihat Tahapan yang Telah Berlangsung
+                                                Tahapan
                                             </a>
                                         </div>
                                     </div>

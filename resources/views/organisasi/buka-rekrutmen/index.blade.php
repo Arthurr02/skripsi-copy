@@ -32,7 +32,7 @@
         <form
             action="{{ route('organisasi.buka-rekrutmen.store_inisiasi') }}"
             method="POST"
-            class="bg-white px-5 sm:px-10 py-6 sm:py-10 rounded-xl shadow-sm border border-slate-200 gap-8"
+            class="bg-white px-5 sm:px-10 py-6 sm:py-10 rounded-xl shadow-sm border border-slate-200"
         >
             @csrf
             <div class="space-y-8">

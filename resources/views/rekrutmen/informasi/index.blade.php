@@ -225,11 +225,14 @@
         @endphp
 
         <div
+            data-server-errors="{{ base64_encode(json_encode($errors->messages())) }}"
+            data-group-posisi="{{ base64_encode(json_encode($groupedJabatan)) }}"
+            data-tahapan="{{ base64_encode(json_encode($tahapanResult ?? [])) }}"
             x-data="{
                 
                 tab: Number(new URLSearchParams(window.location.search).get('tab')) === 3 ? 3 : {{ collect(array_keys($errors->messages()))->contains(fn ($key) => str_starts_with($key, 'tahapan')) ? 3 : (collect(array_keys($errors->messages()))->contains(fn ($key) => str_starts_with($key, 'nama_posisi') || str_starts_with($key, 'nama_jabatan') || str_starts_with($key, 'jabatan_ids')) ? 2 : 1) }},
                 errors: {},
-                serverErrors: @json($errors->messages()),
+                serverErrors: JSON.parse(atob($el.dataset.serverErrors)),
                 openFormBuilder: false,
                 isWawancaraMode: false, 
                 showFormSuccess: false, 
@@ -243,9 +246,9 @@
                 
                 // 1. STRUKTUR BARU (Grup Posisi -> Jabatan)
                 // GANTI MENJADI INI (Gunakan kurung kurawal ganda biasa):
-                listGroupPosisi: {{ json_encode($groupedJabatan) }},
+                listGroupPosisi: JSON.parse(atob($el.dataset.groupPosisi)),
 
-                listTahapan: {{ json_encode($tahapanResult ?? []) }},
+                listTahapan: JSON.parse(atob($el.dataset.tahapan)),
 
                 init() {
                     this.tampilkanKesalahanServer();
@@ -271,6 +274,11 @@
                             });
                         });
                     }
+
+                    const kesalahanAwal = Object.keys(this.errors)[0];
+                    if (kesalahanAwal) {
+                        this.fokuskanKesalahan(kesalahanAwal);
+                    }
                 },
 
                 tampilkanKesalahanServer() {
@@ -291,6 +299,8 @@
 
                             if (namaBidang) {
                                 this.errors[namaBidang + indeks] = pesanPertama;
+                            } else if (bidang === 'tugas') {
+                                this.errors['tugas_tahapan_' + indeks] = pesanPertama;
                             }
 
                             return;
@@ -308,14 +318,98 @@
                     let indeksJabatan = 0;
                     this.listGroupPosisi.forEach((grup, indeksPosisi) => {
                         grup.jabatans.forEach((jabatan, indeksDalamPosisi) => {
-                            const key = 'nama_jabatan.' + indeksJabatan;
-                            if (this.serverErrors[key]) {
+                            const keyJabatan = 'nama_jabatan.' + indeksJabatan;
+                            const keyPosisi = 'nama_posisi.' + indeksJabatan;
+                            if (this.serverErrors[keyJabatan]) {
                                 this.errors['nama_jabatan_' + indeksPosisi + '_' + indeksDalamPosisi] =
-                                    this.serverErrors[key][0];
+                                    this.serverErrors[keyJabatan][0];
+                            }
+                            if (this.serverErrors[keyPosisi]) {
+                                this.errors['nama_posisi_' + indeksPosisi] =
+                                    this.serverErrors[keyPosisi][0];
                             }
                             indeksJabatan++;
                         });
                     });
+                },
+
+                fokuskanKesalahan(field) {
+                    let namaInput = '';
+                    let penandaData = '';
+                    let label = 'Input formulir';
+
+                    const fieldInformasi = {
+                        slogan: ['slogan', 'Headline rekrutmen'],
+                        deskripsi_rekrutmen: ['deskripsi_rekrutmen', 'Deskripsi rekrutmen'],
+                        banner: ['banner', 'Banner rekrutmen'],
+                        buku_pedoman: ['buku_pedoman', 'Buku pedoman'],
+                    }[field];
+
+                    if (fieldInformasi) {
+                        this.tab = 1;
+                        [namaInput, label] = fieldInformasi;
+                    } else if (field.startsWith('nama_posisi_')) {
+                        this.tab = 2;
+                        penandaData = 'posisi:' + field.replace('nama_posisi_', '');
+                        label = 'Nama posisi';
+                    } else if (field.startsWith('nama_jabatan_')) {
+                        this.tab = 2;
+                        penandaData = 'jabatan:' + field.replace('nama_jabatan_', '');
+                        label = 'Nama jabatan';
+                    } else {
+                        const tahap = field.match(/(?:^|_)(?:tahapan_)?(\d+)(?:_|$)/);
+                        const indeksTahapan = tahap ? Number(tahap[1]) : null;
+                        const namaTahap = field.replace(/_\d+$/, '');
+
+                        if (indeksTahapan !== null && (
+                            field.startsWith('nama_tahapan_') ||
+                            field.startsWith('deskripsi_tahapan_') ||
+                            field.startsWith('waktu_pengumuman_') ||
+                            field.startsWith('tanggal_mulai_') ||
+                            field.startsWith('tanggal_selesai_') ||
+                            field.startsWith('jenis_tahapan_') ||
+                            field.startsWith('tahapan_lampiran_') ||
+                            field.startsWith('tugas_tahapan_')
+                        )) {
+                            this.tab = 3;
+                            this.activeTahapanIndex = indeksTahapan;
+                            label = field.startsWith('tugas_tahapan_') ? 'Konfigurasi tugas tahapan ' + (indeksTahapan + 1) : 'Tahapan ' + (indeksTahapan + 1);
+                            const bidangInput = {
+                                nama_tahapan: 'nama_tahapan',
+                                deskripsi_tahapan: 'deskripsi',
+                                waktu_pengumuman: 'waktu_pengumuman',
+                                tanggal_mulai: 'tanggal_mulai',
+                                tanggal_selesai: 'tanggal_selesai',
+                                jenis_tahapan: 'jenis_tahapan',
+                            }[namaTahap];
+                            namaInput = bidangInput
+                                ? 'tahapan[' + indeksTahapan + '][' + bidangInput + ']'
+                                : 'tahapan_lampiran_' + indeksTahapan;
+                        }
+                    }
+
+                    this.$nextTick(() => {
+                        setTimeout(() => {
+                            const target = namaInput
+                                ? Array.from(document.querySelectorAll('[name]')).find(
+                                    (element) => element.name === namaInput,
+                                )
+                                : penandaData.startsWith('posisi:')
+                                  ? Array.from(document.querySelectorAll('[data-posisi-index]')).find(
+                                        (element) => element.dataset.posisiIndex === penandaData.replace('posisi:', ''),
+                                    )
+                                  : penandaData.startsWith('jabatan:')
+                                    ? Array.from(document.querySelectorAll('[data-jabatan-index]')).find(
+                                        (element) => element.dataset.jabatanIndex === penandaData.replace('jabatan:', ''),
+                                    )
+                                : null;
+                            const kontainer = target || (this.tab === 3 ? document.getElementById('tahapan-seleksi') : null);
+                            kontainer?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            (target?.closest('label, [role=button]') || target)?.focus?.({ preventScroll: true });
+                        }, 80);
+                    });
+
+                    return label;
                 },
 
                 // 3. EMPAT FUNGSI KONTROL GRUP JABATAN
@@ -323,13 +417,36 @@
                     this.listGroupPosisi.push({ posisi: '', jabatans: [{ id: null, nama: '' }] });
                 },
                 hapusPosisi(pIdx) {
+                    if (this.groupMemilikiPendaftar(this.listGroupPosisi[pIdx])) {
+                        this.tampilkanPenolakanPenghapusan();
+                        return;
+                    }
+
                     this.listGroupPosisi.splice(pIdx, 1);
                 },
                 tambahJabatan(pIdx) {
                     this.listGroupPosisi[pIdx].jabatans.push({ id: null, nama: '' });
                 },
                 hapusJabatan(pIdx, jIdx) {
+                    if (this.listGroupPosisi[pIdx].jabatans[jIdx].memilikiPendaftar) {
+                        this.tampilkanPenolakanPenghapusan();
+                        return;
+                    }
+
                     this.listGroupPosisi[pIdx].jabatans.splice(jIdx, 1);
+                },
+
+                groupMemilikiPendaftar(group) {
+                    return (group?.jabatans || []).some((jabatan) => jabatan.memilikiPendaftar);
+                },
+
+                tampilkanPenolakanPenghapusan() {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Formasi tidak dapat dihapus',
+                        text: 'Formasi ini sudah dipilih oleh mahasiswa yang mendaftar.',
+                        confirmButtonColor: '#2563eb',
+                    });
                 },
 
                 // 4. ROMBAK TOTAL LOGIKA SINKRONISASI
@@ -458,9 +575,9 @@
 
                 validateField(fieldName, value, label) {
                     if (!value || value.toString().trim() === '') {
-                        this.errors[fieldName] = ' wajib diisi!';
+                        this.errors[fieldName] = label + ' wajib diisi.';
                     } else {
-                        const isExempt = fieldName === 'slogan' || fieldName === 'deskripsi_rekrutmen' || fieldName.includes('tanggal') || fieldName.includes('nama_tahapan') || fieldName.includes('deskripsi_tahapan') || fieldName.includes('deskripsi_tugas');
+                        const isExempt = fieldName === 'slogan' || fieldName === 'deskripsi_rekrutmen' || fieldName.startsWith('nama_posisi') || fieldName.includes('tanggal') || fieldName.includes('nama_tahapan') || fieldName.includes('deskripsi_tahapan') || fieldName.includes('deskripsi_tugas');
                         if (!isExempt) {
                             const alphaNumericSpace = /^[a-zA-Z0-9 ]+$/;
                             if (!alphaNumericSpace.test(value.toString().trim())) {
@@ -470,6 +587,92 @@
                         }
                         delete this.errors[fieldName];
                     }
+                },
+
+                validasiWajib(fieldName, value, label) {
+                    if (!value || value.toString().trim() === '') {
+                        this.errors[fieldName] = label + ' wajib diisi.';
+                        return;
+                    }
+
+                    delete this.errors[fieldName];
+                },
+
+                validasiSebelumSimpan() {
+                    const inputDenganNama = (nama) => Array.from(
+                        document.querySelectorAll('[name]'),
+                    ).find((element) => element.name === nama);
+                    const nilaiInput = (nama) => inputDenganNama(nama)?.value || '';
+
+                    this.validateField('slogan', nilaiInput('slogan'), 'Headline rekrutmen');
+                    this.validateField(
+                        'deskripsi_rekrutmen',
+                        nilaiInput('deskripsi_rekrutmen'),
+                        'Deskripsi rekrutmen',
+                    );
+
+                    this.listGroupPosisi.forEach((grup, indeksPosisi) => {
+                        this.validateField(
+                            'nama_posisi_' + indeksPosisi,
+                            grup.posisi,
+                            'Nama posisi',
+                        );
+
+                        grup.jabatans.forEach((jabatan, indeksJabatan) => {
+                            this.validateField(
+                                'nama_jabatan_' + indeksPosisi + '_' + indeksJabatan,
+                                jabatan.nama,
+                                'Nama jabatan',
+                            );
+                        });
+                    });
+
+                    this.listTahapan.forEach((tahapan, indeksTahapan) => {
+                        this.validasiWajib(
+                            'jenis_tahapan_' + indeksTahapan,
+                            tahapan.jenis_tahapan,
+                            'Jenis tahapan',
+                        );
+                        this.validateField(
+                            'nama_tahapan_' + indeksTahapan,
+                            tahapan.nama_tahapan,
+                            'Nama tahapan',
+                        );
+                        delete this.errors['deskripsi_tahapan_' + indeksTahapan];
+
+                        if (tahapan.jenis_tahapan === 'pengumuman') {
+                            this.validasiWajib(
+                                'waktu_pengumuman_' + indeksTahapan,
+                                tahapan.waktu_pengumuman,
+                                'Waktu pengumuman',
+                            );
+                            delete this.errors['tanggal_mulai_' + indeksTahapan];
+                            delete this.errors['tanggal_selesai_' + indeksTahapan];
+                        } else if (tahapan.jenis_tahapan === 'seleksi') {
+                            this.validasiWajib(
+                                'tanggal_mulai_' + indeksTahapan,
+                                tahapan.tanggal_mulai,
+                                'Waktu mulai',
+                            );
+                            this.validasiWajib(
+                                'tanggal_selesai_' + indeksTahapan,
+                                tahapan.tanggal_selesai,
+                                'Waktu akhir',
+                            );
+                            delete this.errors['waktu_pengumuman_' + indeksTahapan];
+                        }
+                    });
+
+                    Array.from(document.querySelectorAll('[data-lampiran-tahapan]')).forEach(
+                        (input) => this.validateFile(
+                            'tahapan_lampiran_' + input.dataset.lampiranTahapan,
+                            input.files,
+                            5,
+                            'Lampiran tahapan',
+                            'pdf',
+                        ),
+                    );
+                    this.validateAllTimelines();
                 },
 
                 validateFile(fieldName, files, maxSizeMb, label, allowedExts = null) {
@@ -635,13 +838,17 @@
                 action="{{ route($routePrefix . 'rekrutmen.store_update', $periode->id) }}"
                 method="POST"
                 enctype="multipart/form-data"
+                novalidate
                 @submit="
+                    validasiSebelumSimpan();
                     if (Object.keys(errors).length > 0) {
                         $event.preventDefault();
+                        const field = Object.keys(errors)[0];
+                        const lokasi = fokuskanKesalahan(field);
                         Swal.fire({
                             icon: 'error',
                             title: 'Penyimpanan Tertahan',
-                            text: 'Masih ada data yang belum lengkap atau formatnya salah. Silakan periksa kembali tanda peringatan merah pada formulir Anda!',
+                            text: lokasi + ': ' + errors[field],
                             confirmButtonColor: '#2563eb',
                             customClass: {
                                 popup: 'rounded-3xl',

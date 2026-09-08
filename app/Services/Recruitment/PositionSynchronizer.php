@@ -79,12 +79,11 @@ class PositionSynchronizer
 
         foreach ($removedJobs as $job) {
             $hasReferences = $job->pendaftaranPilihanPertama()->exists()
-                || $job->pendaftaranPilihanKedua()->exists()
-                || $job->tugas()->exists();
+                || $job->pendaftaranPilihanKedua()->exists();
 
             if ($hasReferences) {
                 throw ValidationException::withMessages([
-                    'jabatan_ids' => "Jabatan '{$job->nama_jabatan}' tidak dapat dihapus karena sudah digunakan oleh data pendaftaran atau tugas.",
+                    'jabatan_ids' => "Jabatan '{$job->nama_jabatan}' tidak dapat dihapus karena sudah dipilih oleh mahasiswa yang mendaftar.",
                 ]);
             }
         }

@@ -17,6 +17,8 @@ const extensionsFromAccept = (accept) => {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
         'application/vnd.ms-excel': ['xls'],
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
+        'application/zip': ['zip'],
+        'application/x-zip-compressed': ['zip'],
     };
 
     return accept
@@ -39,6 +41,7 @@ const hasExpectedClientSignature = async (file, extension) => {
     if (extension === 'jpg' || extension === 'jpeg') return startsWith(0xff, 0xd8, 0xff);
     if (extension === 'doc' || extension === 'xls') return startsWith(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1);
     if (extension === 'docx' || extension === 'xlsx') return startsWith(0x50, 0x4b, 0x03, 0x04);
+    if (extension === 'zip') return startsWith(0x50, 0x4b, 0x03, 0x04) || startsWith(0x50, 0x4b, 0x05, 0x06) || startsWith(0x50, 0x4b, 0x07, 0x08);
 
     return false;
 };

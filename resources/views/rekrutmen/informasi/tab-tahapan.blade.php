@@ -117,12 +117,13 @@
                             </label>
 
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <label
-                                    class="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors bg-white hover:border-blue-300"
-                                    :class="tahapan.jenis_tahapan ===
-                                    'pengumuman'
-                                        ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/30'
-                                        : 'border-slate-200'"
+                               <label
+                                    class="flex items-start gap-3 rounded-lg border p-4 transition-colors"
+                                    :class="tIndex === 0
+                                        ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60'
+                                        : (tahapan.jenis_tahapan === 'pengumuman'
+                                            ? 'cursor-pointer border-blue-500 ring-1 ring-blue-500 bg-blue-50/30'
+                                            : 'cursor-pointer border-slate-200 bg-white hover:border-blue-300')"
                                 >
                                     <input
                                         type="radio"
@@ -157,7 +158,9 @@
                                     <input
                                         type="radio"
                                         value="seleksi"
-                                        :name="tIndex === 0 ? null : `tahapan[${tIndex}][jenis_tahapan]`"
+                                        :name="tIndex === 0
+                                            ? null
+                                            : `tahapan[${tIndex}][jenis_tahapan]`"
                                         x-model="tahapan.jenis_tahapan"
                                         @change="aturJenisTahapan(tahapan)"
                                         :disabled="tIndex === 0"
@@ -167,7 +170,7 @@
                                     <span>
                                         <span
                                             class="block text-sm font-bold text-slate-800"
-                                        >Tahapan Seleksi</span
+                                            >Tahapan Pendaftaran / Seleksi</span
                                         >
                                         <span
                                             class="mt-1 block text-xs font-normal text-slate-500"
@@ -179,7 +182,11 @@
                                     </span>
                                 </label>
                                 <template x-if="tIndex === 0">
-                                    <input type="hidden" name="tahapan[0][jenis_tahapan]" value="seleksi" />
+                                    <input
+                                        type="hidden"
+                                        name="tahapan[0][jenis_tahapan]"
+                                        value="seleksi"
+                                    />
                                 </template>
                             </div>
                             <p
@@ -223,7 +230,7 @@
                                             ? 'border-red-500 bg-red-50 text-red-700 focus:ring-0 focus:border-red-500'
                                             : 'border-slate-300 focus:border-blue-600 focus:ring-0 bg-white text-slate-800'"
                                         class="w-full border rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4"
-                                        placeholder="Contoh: Seleksi Berkas / Ujian Tulis"
+                                        placeholder="Contoh: Pendaftaran Peserta"
                                         required
                                     />
                                     <p
@@ -242,30 +249,22 @@
                                     <label
                                         class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
                                     >
-                                        Deskripsi Tahapan<span
-                                            class="text-red-500 ml-0.5"
-                                            >*</span
-                                        >
+                                       Deskripsi Tahapan<span
+                                            class="ml-1 text-xs font-bold text-slate-400"
+                                            >(Opsional)</span
+                                       >
                                     </label>
                                     <textarea
-                                        :name="`tahapan[${tIndex}][deskripsi]`"
-                                        x-model="tahapan.deskripsi"
-                                        rows="3"
-                                        @blur="
-                                            validateField(
-                                                'deskripsi_tahapan_' + tIndex,
-                                                tahapan.deskripsi,
-                                                'Deskripsi tahapan',
-                                            )
-                                        "
-                                        :class="errors[
+                                       :name="`tahapan[${tIndex}][deskripsi]`"
+                                       x-model="tahapan.deskripsi"
+                                       rows="3"
+                                       :class="errors[
                                             'deskripsi_tahapan_' + tIndex
                                         ]
                                             ? 'border-red-500 bg-red-50 text-red-700 focus:ring-0 focus:border-red-500'
                                             : 'border-slate-300 focus:border-blue-600 focus:ring-0 bg-white text-slate-800'"
                                         class="w-full border rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4"
-                                        placeholder="Contoh: Jelaskan secara singkat apa yang perlu disiapkan pendaftar..."
-                                        required
+                                        placeholder="Contoh: Peserta diharapkan membuat CV dengan template yang telah disediakan."
                                     ></textarea>
                                     <p x-show="errors['deskripsi_tahapan_' + tIndex]" x-text="errors['deskripsi_tahapan_' + tIndex]" class="mt-2 text-xs text-red-500 font-bold style='display:none;'"></p>
                                 </div>
@@ -381,7 +380,14 @@
                                         <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                                         </svg>
-                                        <span x-text="tahapan.jenis_tahapan === 'pengumuman' ? 'Lampiran Pengumuman' : 'Buku Pedoman Khusus Tahapan'"></span>
+                                        <span
+                                            x-text="
+                                                tahapan.jenis_tahapan ===
+                                                'pengumuman'
+                                                    ? 'Lampiran Pengumuman'
+                                                    : 'Buku Pedoman Khusus Tahapan'
+                                            "
+                                        ></span>
                                         <span
                                             class="text-xs font-bold text-slate-400"
                                             >(Opsional)</span
@@ -394,17 +400,22 @@
                                         class="relative group cursor-pointer mt-1"
                                     >
                                         <input
-                                            type="file"
-                                            :name="`tahapan_lampiran_${tIndex}`"
-                                            accept=".pdf"
+                                           type="file"
+                                           :name="`tahapan_lampiran_${tIndex}`"
+                                            :data-lampiran-tahapan="tIndex"
+                                            accept=".pdf,application/pdf"
                                             @change="
                                                 validateFile(
                                                     'tahapan_lampiran_' +
                                                         tIndex,
                                                     $event.target.files,
                                                     5,
-                                                    tahapan.jenis_tahapan === 'pengumuman' ? 'Lampiran pengumuman' : 'Lampiran tahapan',
-                                                );
+                                                   tahapan.jenis_tahapan ===
+                                                       'pengumuman'
+                                                       ? 'Lampiran pengumuman'
+                                                       : 'Lampiran tahapan',
+                                                    'pdf',
+                                               );
                                                 fileName =
                                                     $event.target.files.length >
                                                     0
@@ -433,7 +444,7 @@
                                                             class="text-sm font-bold text-blue-600 group-hover:text-blue-700"
                                                             >Klik atau Seret
                                                             PDF</span
-                                                        >
+                                                       >
                                                         <p class="mt-1 text-xs text-slate-500">Maks 5 MB (PDF)</p>
                                                     </div>
                                                 </template>
@@ -520,7 +531,7 @@
                                             <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                                             Penugasan Seleksi
                                         </h4>
-                                        <p class="text-sm font-normal text-slate-500 mt-1">Tahapan seleksi per posisi-jabatan ataupun secara keseluruhan dapat diatur melalui tabel di bawah ini.</p>
+                                        <p class="text-sm font-normal text-slate-500 mt-1">Pilih terlebih dulu apakah penugasan yang kamu tetapkan untuk semua jabatan, atau spesifik setiap jabatan. Barulah tetapkan penugasan melalui tabel di bawah ini.</p>
                                     </div>
 
                                     <!-- Toggle Sama/Beda -->
@@ -682,7 +693,7 @@
                                                             "
                                                             rows="4"
                                                             class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 bg-white text-slate-800 resize-none"
-                                                            placeholder="Ketik rincian penugasan di sini..."
+                                                            placeholder="Ketik instruksi penugasan disini jika ada"
                                                             :disabled="tahapan.metodeDistribusi ===
                                                                 'sama' &&
                                                             jIndex !== 0"
@@ -824,9 +835,9 @@
                                                             </p>
                                                             <input
                                                                 type="file"
-                                                                :name="`tahapan[${tIndex}][tugas][${jIndex}][lampiran_files][]`"
-                                                                multiple
-                                                                accept=".pdf,.doc,.docx"
+                                                               :name="`tahapan[${tIndex}][tugas][${jIndex}][lampiran_files][]`"
+                                                               multiple
+                                                                accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                                                 class="block w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 bg-white border border-slate-300 rounded-md transition-colors cursor-pointer focus:outline-none"
                                                                 :disabled="tahapan.metodeDistribusi ===
                                                                     'sama' &&

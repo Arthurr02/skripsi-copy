@@ -89,7 +89,7 @@
                     <p class="text-sm text-slate-500 leading-relaxed">
                         {{
                             $isRiwayatMahasiswa
-                                ? 'Lihat kembali tahapan dan penugasan yang pernah Anda kirimkan pada rekrutmen ini.'
+                                ? 'Lihat kembali tahapan dan penugasan yang pernah Anda kirimkan pada rekrutmen periode ini.'
                                 : 'Informasi tahapan seleksi rekrutmen serta penugasan yang diberikan dapat melalui halaman ini.'
                         }}
                     </p>
@@ -303,7 +303,10 @@
                                             <div
                                                 class="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-3"
                                             >
-                                                <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 1-2-2V7a4 4 0 0 1 8 0v4" /></svg>
+                                                <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                                </svg>
                                                 <p class="text-sm font-bold text-slate-500">
                                                     {{
                                                         $tahapan->jenis_tahapan === 'pengumuman'
@@ -398,12 +401,12 @@
                                                                             {{
                                                                                 $tahapan->is_past
                                                                                     ? 'Lihat
-                                                                                                                                                            Tugas
-                                                                                                                                                            Terkirim'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Tugas
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Terkirim'
                                                                                     : ($isRiwayatMahasiswa
                                                                                         ? 'Lihat
-                                                                                                                                                            Tugas
-                                                                                                                                                            Terkirim'
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Tugas
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Terkirim'
                                                                                         : 'Kerjakan Tugas')
                                                                             }}</span
                                                                         >
@@ -746,8 +749,16 @@
                                     <label
                                         @dragover.prevent
                                         @drop.prevent="
-                                            window.rekrutmenValidateDroppedFiles($refs.berkasJawaban, $event.dataTransfer.files)
-                                                .then(files => files && tetapkanBerkas(files))
+                                            window
+                                                .rekrutmenValidateDroppedFiles(
+                                                    $refs.berkasJawaban,
+                                                    $event.dataTransfer.files,
+                                                )
+                                                .then(
+                                                    (files) =>
+                                                        files &&
+                                                        tetapkanBerkas(files),
+                                                )
                                         "
                                         :class="berkasBaru.length
                                             ? 'border-emerald-300 bg-emerald-50'
@@ -783,8 +794,38 @@
                                             name="file_jawaban[]"
                                             multiple
                                             class="sr-only"
-                                            :accept="(tugasAktif?.tipe_jawaban_tugas || 'pdf,doc,docx').split(',')
-                                                .flatMap((format) => format.trim() === 'word' ? ['.doc', '.docx'] : format.trim() === 'excel' ? ['.xls', '.xlsx'] : ['.' + format.trim()])
+                                            :accept="(
+                                                tugasAktif?.tipe_jawaban_tugas ||
+                                                'pdf,doc,docx'
+                                            )
+                                                .split(',')
+                                                .flatMap((format) =>
+                                                    format.trim() === 'word'
+                                                        ? ['.doc', '.docx']
+                                                        : format.trim() ===
+                                                            'excel'
+                                                          ? ['.xls', '.xlsx']
+                                                          : [
+                                                                  'image',
+                                                                  'gambar',
+                                                                  'foto',
+                                                              ].includes(
+                                                                  format
+                                                                      .trim()
+                                                                      .toLowerCase(),
+                                                              )
+                                                            ? [
+                                                                  '.jpg',
+                                                                  '.jpeg',
+                                                                  '.png',
+                                                                  'image/jpeg',
+                                                                  'image/png',
+                                                              ]
+                                                          : [
+                                                                '.' +
+                                                                    format.trim(),
+                                                            ],
+                                                )
                                                 .join(',')"
                                         />
                                     </label>
@@ -909,7 +950,7 @@
 
                             <template x-if="tugasSudahDikumpul">
                                 <div
-                                    class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm"
+                                    class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm mt-5"
                                 >
                                     <p class="text-[11px] font-extrabold text-emerald-800 uppercase tracking-widest">Berkas telah diserahkan</p>
                                     <template

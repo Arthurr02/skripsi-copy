@@ -11,8 +11,9 @@
 @endphp
 
 <div
+    data-initial-show="{{ $show ? '1' : '0' }}"
     x-data="{
-        show: @js($show),
+        show: $el.dataset.initialShow === '1',
         focusables() {
             // All focusable element types...
             let selector = 'a, button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]:not([tabindex=\'-1\'])'

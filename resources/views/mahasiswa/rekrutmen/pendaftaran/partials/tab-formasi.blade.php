@@ -35,7 +35,7 @@
         @else
             <div class="flex flex-col px-5 sm:px-10 py-6 sm:py-10 space-y-8">
                 <!-- PILIHAN 1 (WAJIB) -->
-                <div class="">
+                <div class="" data-field-key="jabatan_1_id">
                     <h3
                         class="block text-sm font-bold text-slate-700 mb-2 tracking-wide"
                     >

@@ -10,6 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Socialite\Facades\Socialite;
+use Mockery;
 use Tests\TestCase;
 
 class UploadSecurityAndDosenTest extends TestCase
@@ -63,7 +65,7 @@ class UploadSecurityAndDosenTest extends TestCase
         ]);
 
         Auth::guard('organisasi')->logout();
-        $this->actingAs($dosen, 'dosen')
+        $response = $this->actingAs($dosen, 'dosen')
             ->get(route('dosen.data-organisasi.index', [
                 'organisasi' => 'Eksekutif',
                 'sort' => 'tanggal_mulai',
@@ -72,6 +74,10 @@ class UploadSecurityAndDosenTest extends TestCase
             ->assertOk()
             ->assertSee('Badan Eksekutif Mahasiswa')
             ->assertDontSee('Dewan Perwakilan Mahasiswa');
+
+        // Tiga tautan sortir dan satu tautan berkas tidak boleh menyalakan
+        // overlay pemuatan global karena browser sudah akan memuat halaman baru.
+        $this->assertGreaterThanOrEqual(4, substr_count($response->getContent(), 'data-no-loading'));
 
         $this->actingAs($dosen, 'dosen')
             ->get(route('dosen.data-organisasi.download', $unggahan))
@@ -89,6 +95,34 @@ class UploadSecurityAndDosenTest extends TestCase
         $this->actingAs($mahasiswa)
             ->get(route('dosen.data-organisasi.index'))
             ->assertRedirect(route('login'));
+    }
+
+    public function test_registered_dosen_can_login_and_sync_google_profile(): void
+    {
+        $dosen = Dosen::create([
+            'nama' => 'Nama Sebelumnya',
+            'email' => 'dosen.penguji@stis.ac.id',
+        ]);
+        $googleUser = (object) [
+            'id' => 'google-dosen-123',
+            'email' => $dosen->email,
+            'name' => 'Dr. Dosen Penguji',
+            'avatar' => 'https://example.test/avatar-dosen.jpg',
+        ];
+        $driver = Mockery::mock();
+        $driver->shouldReceive('user')->once()->andReturn($googleUser);
+        Socialite::shouldReceive('driver')->once()->with('google')->andReturn($driver);
+
+        $this->get('/auth/google/callback')
+            ->assertRedirect(route('dosen.dashboard'));
+
+        $this->assertAuthenticatedAs($dosen->fresh(), 'dosen');
+        $this->assertDatabaseHas('dosen', [
+            'id' => $dosen->id,
+            'nama' => 'Dr. Dosen Penguji',
+            'google_id' => 'google-dosen-123',
+            'avatar_google' => 'https://example.test/avatar-dosen.jpg',
+        ]);
     }
 
     private function buatOrganisasi(string $nama): Organisasi

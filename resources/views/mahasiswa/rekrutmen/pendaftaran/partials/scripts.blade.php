@@ -22,6 +22,19 @@
         @endif
 
         @if ($errors->any())
+        const fieldKesalahanPertama = @json(array_key_first($errors->messages()));
+        setTimeout(() => {
+            const namaBidang = fieldKesalahanPertama
+                ?.replace(/^dynamic_(?:answers|files)\./, '')
+                ?.replace(/^file_berkas$/, 'file_berkas');
+            const target = namaBidang
+                ? document.querySelector(`[data-field-key="${namaBidang}"]`)
+                : null;
+
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target?.querySelector('[role="button"], input, textarea, select')?.focus({ preventScroll: true });
+        }, 300);
+
         premiumSwal.fire({
             icon: 'error',
             title: 'Pendaftaran Tertunda',

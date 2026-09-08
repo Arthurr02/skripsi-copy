@@ -41,10 +41,6 @@ class AuthController extends Controller
             $organisasi = Organisasi::where('email_kampus', $email)->first();
 
             if ($organisasi) {
-                $organisasi->update([
-                    'avatar_google' => $avatarUrl,
-                ]);
-
                 Auth::guard('organisasi')->login($organisasi);
                 $request->session()->regenerate();
 
@@ -55,6 +51,15 @@ class AuthController extends Controller
             // oleh administrator pada tabel dosen.
             $dosen = Dosen::query()->where('email', $email)->first();
             if ($dosen) {
+                // Identitas profil dosen selalu mengikuti akun Google yang
+                // digunakan untuk masuk. Organisasi tidak mengikuti aturan ini
+                // karena nama dan logo organisasinya dikelola secara mandiri.
+                $dosen->update([
+                    'google_id' => $googleUser->id,
+                    'avatar_google' => $avatarUrl,
+                    'nama' => filled($googleUser->name) ? $googleUser->name : $dosen->nama,
+                ]);
+
                 Auth::guard('dosen')->login($dosen);
                 $request->session()->regenerate();
 

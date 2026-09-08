@@ -72,7 +72,6 @@ class DaftarAnggotaController extends Controller
         abort_unless($daftarAnggota->organisasi_id === Auth::guard('organisasi')->id(), 403);
         abort_unless(Storage::disk('local')->exists($daftarAnggota->file_path), 404);
 
-        ob_end_clean();
         return Storage::disk('local')->download($daftarAnggota->file_path, $daftarAnggota->nama_file_asli);
     }
 }

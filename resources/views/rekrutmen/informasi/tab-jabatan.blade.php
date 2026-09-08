@@ -86,9 +86,20 @@
                                 <input
                                     type="text"
                                     x-model="group.posisi"
-                                    class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-900"
+                                    :data-posisi-index="pIdx"
+                                    @blur="validateField('nama_posisi_' + pIdx, group.posisi, 'Nama posisi')"
+                                    :class="errors['nama_posisi_' + pIdx]
+                                        ? 'border-red-500 bg-red-50 text-red-700 focus:border-red-500'
+                                        : 'border-slate-300 focus:border-blue-600 bg-white text-slate-900'"
+                                    class="w-full border focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4"
                                     placeholder="Contoh: Badan Pengurus Harian"
                                 />
+                                <p
+                                    x-show="errors['nama_posisi_' + pIdx]"
+                                    x-text="errors['nama_posisi_' + pIdx]"
+                                    class="mt-1 text-[11px] font-bold text-red-500"
+                                    style="display: none"
+                                ></p>
                             </div>
 
                             <!-- Tombol Hapus Posisi -->
@@ -97,7 +108,12 @@
                                     type="button"
                                     @click="hapusPosisi(pIdx)"
                                     x-show="listGroupPosisi.length > 1"
-                                    class="w-full sm:w-auto text-xs font-bold tracking-wide text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2.5 rounded-md border border-red-200 transition-colors flex justify-center items-center gap-1.5"
+                                    :disabled="groupMemilikiPendaftar(group)"
+                                    :title="groupMemilikiPendaftar(group) ? 'Posisi tidak dapat dihapus karena sudah memiliki pendaftar.' : 'Hapus posisi'"
+                                    :class="groupMemilikiPendaftar(group)
+                                        ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70'
+                                        : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'"
+                                    class="w-full sm:w-auto text-xs font-bold tracking-wide px-4 py-2.5 rounded-md border transition-colors flex justify-center items-center gap-1.5"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     Hapus Posisi
@@ -142,6 +158,7 @@
                                                 type="text"
                                                 name="nama_jabatan[]"
                                                 x-model="jabatan.nama"
+                                                :data-jabatan-index="pIdx + '-' + jIdx"
                                                 @blur="
                                                     validateField(
                                                         'nama_jabatan_' +
@@ -161,7 +178,7 @@
                                                     ? 'border-red-500 bg-red-50 text-red-700'
                                                     : 'border-transparent focus:border-blue-600 focus:bg-white bg-transparent text-slate-900'"
                                                 class="w-full rounded-l-md text-sm font-bold py-2.5 px-3 sm:px-4 transition-all border focus:ring-0"
-                                                placeholder="Ketik nama jabatan..."
+                                                placeholder="Contoh: Sekretaris"
                                                 required
                                             />
                                             <p x-show="errors['nama_jabatan_' + pIdx + '_' + jIdx]" x-text="errors['nama_jabatan_' + pIdx + '_' + jIdx]" class="mt-1 text-[11px] text-red-500 font-bold ml-1" style="display: none"></p>
@@ -172,8 +189,12 @@
                                             type="button"
                                             @click="hapusJabatan(pIdx, jIdx)"
                                             x-show="group.jabatans.length > 1"
-                                            class="shrink-0 text-slate-400 hover:text-red-600 bg-transparent p-2.5 transition-colors flex justify-center items-center opacity-60 group-hover:opacity-100"
-                                            title="Hapus Jabatan"
+                                            :disabled="jabatan.memilikiPendaftar"
+                                            :title="jabatan.memilikiPendaftar ? 'Jabatan tidak dapat dihapus karena sudah dipilih oleh mahasiswa yang mendaftar.' : 'Hapus jabatan'"
+                                            :class="jabatan.memilikiPendaftar
+                                                ? 'cursor-not-allowed text-slate-300 opacity-100'
+                                                : 'text-slate-400 hover:text-red-600 opacity-60 group-hover:opacity-100'"
+                                            class="shrink-0 bg-transparent p-2.5 transition-colors flex justify-center items-center"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                         </button>

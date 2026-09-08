@@ -57,6 +57,7 @@ class Breadcrumb extends Component
             'mahasiswa.riwayat.index' => $this->trail(['Riwayat Rekrutmen']),
             'mahasiswa.riwayat.diikuti.tahapan' => $this->trail(['Riwayat Rekrutmen', 'mahasiswa.riwayat.index'], ['Tahapan Seleksi']),
             'mahasiswa.riwayat.diikuti.tugas' => $this->trail(['Riwayat Rekrutmen', 'mahasiswa.riwayat.index'], ['Tahapan Seleksi', 'mahasiswa.riwayat.diikuti.tahapan', ['id' => $parameter('pendaftaran')]], ['Detail Tugas']),
+            'mahasiswa.riwayat.tahapan' => $this->trail(['Riwayat Rekrutmen', 'mahasiswa.riwayat.index'], ['Tahapan Rekrutmen']),
             'mahasiswa.riwayat.pengumuman' => $this->trail(['Riwayat Rekrutmen', 'mahasiswa.riwayat.index'], ['Pengumuman Rekrutmen']),
             default => $this->trail(['Halaman']),
         };

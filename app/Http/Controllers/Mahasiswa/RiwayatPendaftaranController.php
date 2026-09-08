@@ -43,11 +43,8 @@ class RiwayatPendaftaranController extends Controller
         return view('mahasiswa.riwayat.index', compact('riwayatDiikuti', 'riwayatTidakDiikuti'));
     }
 
-    /**
-     * Menampilkan pengumuman pada rekrutmen tertutup yang tidak diikuti.
-     * Tahapan seleksi dan penugasannya sengaja tidak dimuat.
-     */
-    public function showTahapanPengumuman(int $periode_id)
+    /** Menampilkan seluruh tahapan rekrutmen tertutup secara baca-saja. */
+    public function showTahapan(int $periode_id)
     {
         $periode = PeriodeRekrutmen::with('organisasi')->findOrFail($periode_id);
 
@@ -55,7 +52,6 @@ class RiwayatPendaftaranController extends Controller
 
         $tahapans = Tahapan::query()
             ->where('periode_rekrutmen_id', $periode->id)
-            ->where('jenis_tahapan', 'pengumuman')
             ->orderBy('urutan_tahapan')
             ->get()
             ->map(function (Tahapan $tahapan) {
@@ -73,5 +69,11 @@ class RiwayatPendaftaranController extends Controller
             });
 
         return view('mahasiswa.riwayat.pengumuman', compact('periode', 'tahapans'));
+    }
+
+    /** Rute lama tetap tersedia untuk tautan arsip yang sudah tersimpan. */
+    public function showTahapanPengumuman(int $periode_id)
+    {
+        return $this->showTahapan($periode_id);
     }
 }

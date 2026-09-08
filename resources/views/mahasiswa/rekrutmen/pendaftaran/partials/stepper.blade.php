@@ -1,5 +1,5 @@
-<div class="relative max-w-xs mx-auto mb-12">
-    <div class="mb-12 relative max-w-xl mx-auto">
+<div class="relative sm:max-w-xs max-w-sm mx-auto mb-12">
+    <div class="sm:mb-12 relative max-w-xl mx-auto">
         <!-- Garis Penghubung Background -->
         <div
             class="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 rounded-full hidden sm:block z-0"
@@ -48,7 +48,7 @@
             <button
                 type="button"
                 @click="lanjutKeTugas()"
-                class="relative flex items-center sm:flex-col sm:justify-center gap-3 sm:gap-2 group outline-none bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none p-3 sm:p-0"
+                class="relative flex items-center sm:flex-col sm:justify-center gap-3 sm:gap-2 group outline-none bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none sm:p-3 p-0"
             >
                 <div
                     :class="tab === 2

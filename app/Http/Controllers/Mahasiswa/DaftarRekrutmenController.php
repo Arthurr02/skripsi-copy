@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class DaftarRekrutmenController extends Controller
 {
@@ -34,7 +35,7 @@ class DaftarRekrutmenController extends Controller
             ->orderBy('urutan_tahapan')
             ->get()
             ->groupBy('periode_rekrutmen_id')
-            ->map(fn ($tahapans) => $tahapans->first());
+            ->map(fn($tahapans) => $tahapans->first());
 
         $rekrutmenAktif->each(function (PeriodeRekrutmen $rekrutmen) use ($tahapanPendaftaranPerPeriode) {
             $tahapanPendaftaran = $tahapanPendaftaranPerPeriode->get($rekrutmen->id);
@@ -50,7 +51,7 @@ class DaftarRekrutmenController extends Controller
         $jabatanIdsTerdaftar = Pendaftaran::query()
             ->where('nim', Auth::user()->nim)
             ->get(['jabatan_1_id', 'jabatan_2_id'])
-            ->flatMap(fn (Pendaftaran $pendaftaran) => [$pendaftaran->jabatan_1_id, $pendaftaran->jabatan_2_id])
+            ->flatMap(fn(Pendaftaran $pendaftaran) => [$pendaftaran->jabatan_1_id, $pendaftaran->jabatan_2_id])
             ->filter()
             ->unique()
             ->values();
@@ -110,7 +111,7 @@ class DaftarRekrutmenController extends Controller
             ->orderBy('urutan_tahapan')
             ->first();
 
-        if (! $tahapanSatu) {
+        if (!$tahapanSatu) {
             return redirect()->route('mahasiswa.rekrutmen.info', $periode_id)
                 ->with('error', 'Pendaftaran belum bisa dilakukan karena panitia belum mengatur jadwal tahapan seleksi.');
         }
@@ -136,7 +137,7 @@ class DaftarRekrutmenController extends Controller
                     ? 'Tanpa Divisi Khusus'
                     : $jabatan->nama_posisi;
 
-                if (! isset($groupedJabatan[$namaPosisi])) {
+                if (!isset($groupedJabatan[$namaPosisi])) {
                     $groupedJabatan[$namaPosisi] = [];
                 }
 
@@ -162,7 +163,7 @@ class DaftarRekrutmenController extends Controller
             ->orderBy('urutan_tahapan')
             ->first();
 
-        if ((int) $rekrutmen->status_aktif !== 2 || ! $tahapanSatu) {
+        if ((int) $rekrutmen->status_aktif !== 2 || !$tahapanSatu) {
             return redirect()->route('mahasiswa.rekrutmen.index')
                 ->with('error_server', 'Pendaftaran untuk rekrutmen ini sudah tidak tersedia.');
         }
@@ -203,7 +204,7 @@ class DaftarRekrutmenController extends Controller
                 ->find($request->integer('jabatan_2_id'))
             : null;
 
-        if (! $jabatanUtama || ($request->filled('jabatan_2_id') && ! $jabatanCadangan)) {
+        if (!$jabatanUtama || ($request->filled('jabatan_2_id') && !$jabatanCadangan)) {
             throw ValidationException::withMessages([
                 'jabatan_1_id' => 'Formasi yang dipilih tidak tersedia pada periode rekrutmen ini.',
             ]);
@@ -224,16 +225,63 @@ class DaftarRekrutmenController extends Controller
                 continue;
             }
 
-            $fieldRules = ! empty($field['required']) ? ['required'] : ['nullable'];
-            $fieldRules[] = match ($tipeInput) {
-                'number' => 'numeric',
-                'date' => 'date',
-                'email' => 'email',
-                'checkbox' => 'array',
-                default => 'string',
-            };
+            $fieldRules = ! empty($field['required']) ? ['bail', 'required'] : ['bail', 'nullable'];
+            $opsi = $this->opsiForm($field);
+
+            switch ($tipeInput) {
+                case 'text_short':
+                case 'text':
+                    $fieldRules[] = 'string';
+                    $fieldRules[] = 'max:500';
+                    break;
+                case 'text_long':
+                case 'textarea':
+                case 'long_text':
+                    $fieldRules[] = 'string';
+                    $fieldRules[] = 'max:5000';
+                    break;
+                case 'number':
+                    $fieldRules[] = 'numeric';
+                    break;
+                case 'date':
+                    $fieldRules[] = 'date_format:Y-m-d';
+                    break;
+                case 'email':
+                    $fieldRules[] = 'email:rfc';
+                    break;
+                case 'checkbox':
+                    $fieldRules[] = 'array';
+                    if (! empty($field['required'])) {
+                        $fieldRules[] = 'min:1';
+                    }
+                    // Skema lama dapat memiliki checkbox tanpa opsi. Tetap
+                    // validasi bentuk datanya, dan terapkan whitelist nilai
+                    // ketika organisasi memang telah mengonfigurasi opsi.
+                    if ($opsi !== []) {
+                        $rules["dynamic_answers.{$namaBidang}.*"] = [Rule::in($opsi)];
+                    }
+                    break;
+                case 'radio':
+                case 'select':
+                case 'dropdown':
+                    $fieldRules[] = 'string';
+                    $fieldRules[] = Rule::in($opsi);
+                    break;
+                default:
+                    throw ValidationException::withMessages([
+                        "dynamic_answers.{$namaBidang}" => "Jenis isian '{$field['label']}' tidak dikenali. Hubungi organisasi untuk memperbaiki formulir.",
+                    ]);
+            }
+
             $rules["dynamic_answers.{$namaBidang}"] = $fieldRules;
             $customMessages["dynamic_answers.{$namaBidang}.required"] = "Kolom isian '{$field['label']}' wajib Anda lengkapi.";
+            $customMessages["dynamic_answers.{$namaBidang}.email"] = "Kolom isian '{$field['label']}' harus berupa alamat email yang valid.";
+            $customMessages["dynamic_answers.{$namaBidang}.numeric"] = "Kolom isian '{$field['label']}' harus berupa angka yang valid.";
+            $customMessages["dynamic_answers.{$namaBidang}.date_format"] = "Kolom isian '{$field['label']}' harus berupa tanggal yang valid.";
+            $customMessages["dynamic_answers.{$namaBidang}.min"] = "Pilih setidaknya satu opsi pada '{$field['label']}'.";
+            $customMessages["dynamic_answers.{$namaBidang}.in"] = "Pilihan pada '{$field['label']}' tidak tersedia.";
+            $customMessages["dynamic_answers.{$namaBidang}.*.in"] = "Salah satu pilihan pada '{$field['label']}' tidak tersedia.";
+            $customMessages["dynamic_answers.{$namaBidang}.max"] = "Kolom isian '{$field['label']}' terlalu panjang.";
         }
 
         $perluBerkasUtama = $tugas
@@ -255,13 +303,13 @@ class DaftarRekrutmenController extends Controller
             $namaBidang = $this->namaBidangPendaftaran($field, $indeks);
             $berkas = $this->ambilBerkasPendaftaran($request, $namaBidang);
 
-            if ($berkas === [] && ! empty($field['required'])) {
+            if ($berkas === [] && !empty($field['required'])) {
                 throw ValidationException::withMessages([
                     "dynamic_files.{$namaBidang}" => "Berkas {$field['label']} wajib diunggah.",
                 ]);
             }
 
-            $this->validasiBerkasPendaftaran($berkas, $field);
+            $this->validasiBerkasPendaftaran($berkas, $field, $namaBidang);
             $berkasFormMasuk[$namaBidang] = $berkas;
         }
 
@@ -290,7 +338,9 @@ class DaftarRekrutmenController extends Controller
                 $berkasTersimpan[] = $pathBerkas;
             }
 
-            $jawabanForm = (array) $request->input('dynamic_answers', []);
+            // Hanya isian yang tertera pada skema form milik formasi ini yang
+            // boleh disimpan. Nilai tambahan dari request tidak ikut tersimpan.
+            $jawabanForm = $this->jawabanFormTerdaftar($request, $skemaForm);
             foreach ($berkasFormMasuk as $namaBidang => $berkas) {
                 $jawabanForm[$namaBidang] = [];
                 foreach ($berkas as $file) {
@@ -310,7 +360,7 @@ class DaftarRekrutmenController extends Controller
             }
 
             // 9. Simpan jawaban pendaftaran pada tugas tahap pertama.
-            if ($tugas && ! empty($lampiranJawaban)) {
+            if ($tugas && !empty($lampiranJawaban)) {
                 PengumpulanTugas::create([
                     'tugas_id' => $tugas->id,
                     'pendaftaran_id' => $pendaftaran->id,
@@ -321,7 +371,7 @@ class DaftarRekrutmenController extends Controller
             DB::commit();
 
             return redirect()->route('mahasiswa.rekrutmen.index')
-                ->with('success', 'Selamat! Pendaftaran berkas dan pengisian formulir Anda berhasil dikirim ke server.');
+                ->with('success', 'Selamat! Pendaftaran berkas dan pengisian formulir Anda berhasil dikirim.');
 
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -360,7 +410,7 @@ class DaftarRekrutmenController extends Controller
 
     private function strukturFormPendaftaran(?Tugas $tugas): array
     {
-        if (! $tugas) {
+        if (!$tugas) {
             return [];
         }
 
@@ -373,7 +423,37 @@ class DaftarRekrutmenController extends Controller
 
     private function namaBidangPendaftaran(array $field, int $indeks): string
     {
-        return 'isian_'.$indeks;
+        return 'isian_' . $indeks;
+    }
+
+    /** @return array<int, string> */
+    private function opsiForm(array $field): array
+    {
+        return collect($field['options'] ?? [])
+            ->filter(fn ($opsi) => is_string($opsi) && trim($opsi) !== '')
+            ->map(fn (string $opsi) => trim($opsi))
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function jawabanFormTerdaftar(Request $request, array $skemaForm): array
+    {
+        $jawabanMasuk = (array) $request->input('dynamic_answers', []);
+        $jawaban = [];
+
+        foreach ($skemaForm as $indeks => $field) {
+            if (($field['tipe'] ?? 'text_short') === 'file') {
+                continue;
+            }
+
+            $namaBidang = $this->namaBidangPendaftaran($field, $indeks);
+            if (array_key_exists($namaBidang, $jawabanMasuk)) {
+                $jawaban[$namaBidang] = $jawabanMasuk[$namaBidang];
+            }
+        }
+
+        return $jawaban;
     }
 
     /** @return array<int, UploadedFile> */
@@ -381,19 +461,23 @@ class DaftarRekrutmenController extends Controller
     {
         return collect((array) (($request->allFiles()['dynamic_files'][$namaBidang] ?? [])))
             ->flatten()
-            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->filter(fn($file) => $file instanceof UploadedFile)
             ->values()
             ->all();
     }
 
-    private function validasiBerkasPendaftaran(array $berkas, array $field): void
+    private function validasiBerkasPendaftaran(array $berkas, array $field, string $namaBidang): void
     {
         $aturan = [new SafeUploadedFile($this->formatBerkasForm($field))];
 
         foreach ($berkas as $file) {
-            Validator::make(['berkas' => $file], ['berkas' => $aturan], [
-                'berkas.*' => 'Berkas '.($field['label'] ?? 'jawaban').' tidak aman atau formatnya tidak sesuai.',
-            ])->validate();
+            $validator = Validator::make(['berkas' => $file], ['berkas' => $aturan]);
+
+            if ($validator->fails()) {
+                throw ValidationException::withMessages([
+                    "dynamic_files.{$namaBidang}" => 'Berkas ' . ($field['label'] ?? 'jawaban') . ': ' . $validator->errors()->first('berkas'),
+                ]);
+            }
         }
     }
 
@@ -413,12 +497,13 @@ class DaftarRekrutmenController extends Controller
     private function normalisasiFormatBerkas(array $format): array
     {
         $hasil = collect($format)
-            ->flatMap(fn ($ekstensi) => match (strtolower(trim($ekstensi))) {
+            ->flatMap(fn($ekstensi) => match (strtolower(trim($ekstensi))) {
                 'word' => ['doc', 'docx'],
                 'excel' => ['xls', 'xlsx'],
+                'image', 'gambar', 'foto' => ['jpg', 'jpeg', 'png'],
                 default => [strtolower(trim($ekstensi))],
             })
-            ->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx'])
+            ->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'jpg', 'jpeg', 'png'])
             ->unique()
             ->values()
             ->all();

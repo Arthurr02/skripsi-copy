@@ -104,10 +104,14 @@
 
     <!-- Alpine.js State Management -->
     <div
+        data-pilihan-1="{{ old('jabatan_1_id') }}"
+        data-pilihan-2="{{ old('jabatan_2_id') }}"
+        data-jawaban-lama="{{ base64_encode(json_encode(old('dynamic_answers', []))) }}"
         x-data="{ 
-            tab: 1,
-            pilihan1: '{{ old('jabatan_1_id') }}',
-            pilihan2: '{{ old('jabatan_2_id') }}',
+            tab: {{ $errors->any() && old('jabatan_1_id') ? 2 : 1 }},
+            pilihan1: $el.dataset.pilihan1,
+            pilihan2: $el.dataset.pilihan2,
+            jawabanLama: JSON.parse(atob($el.dataset.jawabanLama)),
             pilihan1Name: '',
             pilihan1Position: '',
             activePosisi1: '',
@@ -122,7 +126,10 @@
                     }
                     this.updatePilihan1Name();
                 });
-                if(this.pilihan1) this.updatePilihan1Name();
+                if(this.pilihan1) {
+                    this.currentTugas = this.tugasMap[this.pilihan1] || null;
+                    this.updatePilihan1Name();
+                }
             },
 
             updatePilihan1Name() {
@@ -169,6 +176,86 @@
 
                 this.tab = 2;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            validasiFormulir() {
+                const fields = this.currentTugas?.form || [];
+
+                for (let indeks = 0; indeks < fields.length; indeks++) {
+                    const field = fields[indeks];
+                    const key = `isian_${indeks}`;
+                    const answerName = `dynamic_answers[${key}]`;
+                    const fileName = `dynamic_files[${key}][]`;
+                    const label = field.label || `Pertanyaan ${indeks + 1}`;
+                    const tipe = field.tipe || 'text_short';
+                    const answerInputs = Array.from(document.getElementsByName(answerName));
+                    const fileInput = document.getElementsByName(fileName)[0];
+                    const pilihan = (field.options || [])
+                        .filter((opsi) => typeof opsi === 'string' && opsi.trim() !== '')
+                        .map((opsi) => opsi.trim());
+                    let pesan = '';
+
+                    if (tipe === 'file') {
+                        if (field.required && (!fileInput || fileInput.files.length === 0)) {
+                            pesan = `Berkas untuk "${label}" wajib diunggah.`;
+                        }
+                    } else if (tipe === 'checkbox') {
+                        const pilihanTerpilih = Array.from(document.getElementsByName(`${answerName}[]`))
+                            .filter((input) => input.checked)
+                            .map((input) => input.value);
+                        if (field.required && pilihanTerpilih.length === 0) {
+                            pesan = `Pilih setidaknya satu opsi pada "${label}".`;
+                        } else if (pilihanTerpilih.some((nilai) => !pilihan.includes(nilai))) {
+                            pesan = `Pilihan pada "${label}" tidak tersedia.`;
+                        }
+                    } else if (tipe === 'radio') {
+                        const pilihanTerpilih = answerInputs.find((input) => input.checked);
+                        if (field.required && !pilihanTerpilih) {
+                            pesan = `Pilih salah satu opsi pada "${label}".`;
+                        } else if (pilihanTerpilih && !pilihan.includes(pilihanTerpilih.value)) {
+                            pesan = `Pilihan pada "${label}" tidak tersedia.`;
+                        }
+                    } else {
+                        const input = answerInputs[0];
+                        const nilai = input?.value?.trim() || '';
+
+                        if (field.required && nilai === '') {
+                            pesan = `Kolom "${label}" wajib diisi.`;
+                        } else if (nilai !== '' && tipe === 'email' && !input.checkValidity()) {
+                            pesan = `Kolom "${label}" harus berupa alamat email yang valid.`;
+                        } else if (nilai !== '' && tipe === 'number' && !input.checkValidity()) {
+                            pesan = `Kolom "${label}" harus berupa angka yang valid.`;
+                        } else if (nilai !== '' && tipe === 'date' && !input.checkValidity()) {
+                            pesan = `Kolom "${label}" harus berupa tanggal yang valid.`;
+                        } else if (['select', 'dropdown'].includes(tipe) && nilai !== '' && !pilihan.includes(nilai)) {
+                            pesan = `Pilihan pada "${label}" tidak tersedia.`;
+                        } else if (['text_long', 'textarea', 'long_text'].includes(tipe) && nilai.length > 5000) {
+                            pesan = `Kolom "${label}" maksimal 5.000 karakter.`;
+                        } else if (['text_short', 'text'].includes(tipe) && nilai.length > 500) {
+                            pesan = `Kolom "${label}" maksimal 500 karakter.`;
+                        }
+                    }
+
+                    if (pesan) {
+                        const target = document.querySelector(`[data-field-key="${key}"]`);
+                        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        target?.querySelector('input, textarea, select, [role="button"]')?.focus({ preventScroll: true });
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Periksa Isian Formulir',
+                            text: pesan,
+                            confirmButtonColor: '#2563eb',
+                            customClass: {
+                                popup: 'rounded-lg border border-slate-200 shadow-sm font-sans',
+                                confirmButton: 'px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold',
+                            },
+                        });
+
+                        return false;
+                    }
+                }
+
+                return true;
             }
         }"
         class="py-4 sm:py-8 px-4 sm:px-8 md:px-10 max-w-5xl mx-auto relative z-10 my-6 sm:my-10 space-y-8"

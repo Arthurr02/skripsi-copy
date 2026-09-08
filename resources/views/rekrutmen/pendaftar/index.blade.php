@@ -96,8 +96,6 @@
                                         });
                                     @endphp
                                     @foreach ($groupedJabatan as $namaPosisi => $jabatans)
-                                        <!-- Tambahkan class text-blue-600 dan font-bold pada optgroup -->
-                                        <!-- Tambahkan bg-slate-100 opsional agar lebih terlihat terpisah -->
                                         <optgroup
                                             label="{{ $namaPosisi }}"
                                             class="text-blue-600 font-extrabold bg-slate-100"
@@ -132,45 +130,12 @@
                                 <option value="">
                                     &mdash; Semua Status Seleksi &mdash;
                                 </option>
-                                <option
-                                    value="Menunggu Seleksi"
-                                    {{
-                                        request('filter_status') ==
-                                        'Menunggu Seleksi'
-                                            ? 'selected'
-                                            : ''
-                                    }}
-                                    >Menunggu Seleksi
-                                </option>
-                                <option
-                                    value="Lulus Tahap 1"
-                                    {{
-                                        request('filter_status') ==
-                                        'Lulus Tahap 1'
-                                            ? 'selected'
-                                            : ''
-                                    }}
-                                    >Lulus Tahap 1
-                                </option>
-                                <option
-                                    value="Lulus Tahap 2"
-                                    {{
-                                        request('filter_status') ==
-                                        'Lulus Tahap 2'
-                                            ? 'selected'
-                                            : ''
-                                    }}
-                                    >Lulus Tahap 2
-                                </option>
-                                <option
-                                    value="Tidak Lolos"
-                                    {{
-                                        request('filter_status') == 'Tidak Lolos'
-                                            ? 'selected'
-                                            : ''
-                                    }}
-                                    >Tidak Lolos
-                                </option>
+                                @foreach ($statusSeleksiTersedia as $statusSeleksi)
+                                    <option
+                                        value="{{ $statusSeleksi }}"
+                                        @selected(request('filter_status') === $statusSeleksi)
+                                    >{{ $statusSeleksi }}</option>
+                                @endforeach
                             </select>
                         </div>
 

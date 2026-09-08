@@ -42,16 +42,16 @@
                 >
                     Formulir Pendaftaran
                 </h2>
-                <p class="text-sm font-extrabold text-blue-700 leading-relaxed">
+                <p class="text-sm font-extrabold text-blue-700 leading-relaxed text-center sm:text-left">
                     {{ $namaOrganisasi }}
                 </p>
             </div>
         </div>
         <!-- Kotak Tenggat Waktu diselaraskan dengan DNA info-box -->
         <div
-            class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 text-left md:text-right shadow-sm w-full md:w-auto"
+            class="bg-white backdrop-blur-sm border border-slate-200/80 px-6 py-4 rounded-lg shrink-0 sm:text-left text-center shadow-sm sm:mt-0 mt-4 w-auto"
         >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center justify-center sm:justify-left gap-2">
                 <span class="flex h-2 w-2">
                     <span
                         class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"

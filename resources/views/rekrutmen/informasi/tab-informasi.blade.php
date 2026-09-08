@@ -46,7 +46,7 @@
                         ? 'border-red-500 bg-red-50 text-red-700 focus:ring-0 focus:border-red-500'
                         : 'border-slate-300 focus:border-blue-600 focus:ring-0 bg-white text-slate-800'"
                     class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4"
-                    placeholder="Contoh: Pembukaan Rekrutmen Anggota Muda BEM"
+                    placeholder="Contoh: Daftarkan Dirimu Menjadi Bagian dari Anggota Organisasi Sekarang!"
                     required
                 />
             </div>
@@ -74,7 +74,7 @@
                         ? 'border-red-500 bg-red-50 text-red-700 focus:ring-0 focus:border-red-500'
                         : 'border-slate-300 focus:border-blue-600 focus:ring-0 bg-white text-slate-800'"
                     class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4"
-                    placeholder="Contoh: Bergabunglah bersama divisi kreatif BEM untuk melatih kemampuan kepemimpinan dan manajerial Anda..."
+                    placeholder="Contoh: Organisasi adalah tempat untuk mengembangkan berbagai soft skill terbaik"
                     required
                     >{{
                         old(

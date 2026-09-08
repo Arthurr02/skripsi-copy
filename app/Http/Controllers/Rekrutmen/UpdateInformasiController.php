@@ -78,7 +78,10 @@ class UpdateInformasiController extends Controller
 
         // ... (kode di atasnya tetap sama) ...
 
-        $jabatanData = Jabatan::where('periode_rekrutmen_id', $periode->id)->get();
+        $jabatanData = Jabatan::query()
+            ->where('periode_rekrutmen_id', $periode->id)
+            ->withCount(['pendaftaranPilihanPertama', 'pendaftaranPilihanKedua'])
+            ->get();
         $routePrefix = $isOrganisasi ? 'organisasi.' : 'panitia.';
 
         // --- 🌟 TAMBAHKAN LOGIKA GROUPING DI SINI ---
@@ -95,6 +98,8 @@ class UpdateInformasiController extends Controller
                 $tempGroup[$posisi][] = [
                     'id' => $jabatan->id,
                     'nama' => $jabatan->nama_jabatan,
+                    'memilikiPendaftar' => $jabatan->pendaftaran_pilihan_pertama_count > 0
+                        || $jabatan->pendaftaran_pilihan_kedua_count > 0,
                 ];
             }
 
@@ -245,7 +250,7 @@ class UpdateInformasiController extends Controller
                     'periode_rekrutmen_id' => $periode->id,
                     'jenis_tahapan' => $jenisTahapan,
                     'nama_tahapan' => strip_tags($tData['nama_tahapan']),
-                    'deskripsi_tahapan' => strip_tags($tData['deskripsi']),
+                    'deskripsi_tahapan' => strip_tags($tData['deskripsi'] ?? ''),
                     'lampiran_tahapan' => empty($lampiranPathArray) ? null : $lampiranPathArray,
                     'waktu_mulai' => $waktuMulai,
                     'waktu_berakhir' => $waktuSelesai,

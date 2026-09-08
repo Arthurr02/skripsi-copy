@@ -291,6 +291,10 @@ class RekrutmenDiikutiController extends Controller
 
         $komponenForm = $lampiranData['form'] ?? [];
         $lampiranPenugasan = array_values(array_filter((array) ($lampiranData['berkas'] ?? [])));
+        $lampiranTahapan = is_array($tugas->tahapan->lampiran_tahapan)
+            ? $tugas->tahapan->lampiran_tahapan
+            : (json_decode($tugas->tahapan->lampiran_tahapan ?? '[]', true) ?: []);
+        $lampiranPedomanTahapan = array_values(array_filter((array) $lampiranTahapan));
 
         // 5. Proses JSON Jawaban Mahasiswa (Disesuaikan dengan DB: lampiran_jawaban)
         $jawabanSebelumnya = [];
@@ -313,6 +317,7 @@ class RekrutmenDiikutiController extends Controller
             'tugas',
             'komponenForm',
             'lampiranPenugasan',
+            'lampiranPedomanTahapan',
             'pengumpulan',
             'jawabanSebelumnya',
             'dapatDikerjakan',
@@ -532,9 +537,12 @@ class RekrutmenDiikutiController extends Controller
 
                 $aturanPerBerkas = [new SafeUploadedFile($this->formatBerkasForm($item['allowed_formats'] ?? []))];
                 foreach ($berkasMasuk as $berkas) {
-                    Validator::make(['berkas' => $berkas], ['berkas' => $aturanPerBerkas], [
-                        'berkas.*' => 'Berkas '.($item['label'] ?? 'jawaban').' tidak aman atau formatnya tidak sesuai.',
-                    ])->validate();
+                    $validator = Validator::make(['berkas' => $berkas], ['berkas' => $aturanPerBerkas]);
+                    if ($validator->fails()) {
+                        throw ValidationException::withMessages([
+                            'jawaban_file.'.$nama => 'Berkas '.($item['label'] ?? 'jawaban').': '.$validator->errors()->first('berkas'),
+                        ]);
+                    }
                 }
 
                 continue;
@@ -650,11 +658,12 @@ class RekrutmenDiikutiController extends Controller
 
     private function formatBerkasForm(array $format): array
     {
-        $hasil = collect($format)->flatMap(fn ($ekstensi) => match (strtolower($ekstensi)) {
+        $hasil = collect($format)->flatMap(fn ($ekstensi) => match (strtolower(trim($ekstensi))) {
             'word' => ['doc', 'docx'],
             'excel' => ['xls', 'xlsx'],
-            default => [strtolower($ekstensi)],
-        })->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx'])->filter()->unique()->values()->all();
+            'image', 'gambar', 'foto' => ['jpg', 'jpeg', 'png'],
+            default => [strtolower(trim($ekstensi))],
+        })->intersect(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'jpg', 'jpeg', 'png'])->filter()->unique()->values()->all();
 
         return $hasil !== [] ? $hasil : ['pdf', 'doc', 'docx'];
     }

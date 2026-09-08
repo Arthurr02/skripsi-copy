@@ -8,7 +8,7 @@ class Dosen extends Authenticatable
 {
     protected $table = 'dosen';
 
-    protected $fillable = ['email', 'nama'];
+    protected $fillable = ['email', 'nama', 'google_id', 'avatar_google'];
 
     protected $hidden = ['remember_token'];
 }

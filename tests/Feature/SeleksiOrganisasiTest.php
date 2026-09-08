@@ -12,8 +12,10 @@ use App\Models\PengumpulanTugas;
 use App\Models\PeriodeRekrutmen;
 use App\Models\Tahapan;
 use App\Models\Tugas;
+use App\Services\Recruitment\PositionSynchronizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -26,6 +28,7 @@ class SeleksiOrganisasiTest extends TestCase
         $organisasi = $this->buatOrganisasi();
         $periode = $this->buatPeriode($organisasi);
         $tahapan = $this->buatTahapan($periode);
+        $jabatan = $this->buatJabatan($periode);
 
         $response = $this->actingAs($organisasi, 'organisasi')
             ->get(route('organisasi.rekrutmen.seleksi'));
@@ -37,7 +40,24 @@ class SeleksiOrganisasiTest extends TestCase
             ->assertSee('Update Tahapan')
             ->assertSee('Lakukan Seleksi')
             ->assertSee('Tutup Rekrutmen')
-            ->assertSee('tahapan_id='.$tahapan->id, false);
+            ->assertSee('tahapan_id='.$tahapan->id, false)
+            ->assertSee('urlJawaban[tahapanAktif?.id]?.['.$jabatan->id.']', false)
+            ->assertSee('data-url-jawaban=', false)
+            ->assertSee('urlJawaban: JSON.parse(atob($el.dataset.urlJawaban))', false)
+            ->assertDontSee('urlJawaban: {', false);
+
+        $dom = new \DOMDocument();
+        $previousLibxmlErrorMode = libxml_use_internal_errors(true);
+        $dom->loadHTML($response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousLibxmlErrorMode);
+        $rootAlpine = (new \DOMXPath($dom))->query('//*[@data-url-jawaban]')->item(0);
+
+        $this->assertNotNull($rootAlpine);
+        $this->assertStringContainsString(
+            'urlJawaban: JSON.parse(atob($el.dataset.urlJawaban))',
+            $rootAlpine->getAttribute('x-data'),
+        );
     }
 
     public function test_dashboard_displays_the_current_selection_stage_and_its_order(): void
@@ -635,6 +655,13 @@ class SeleksiOrganisasiTest extends TestCase
         ]);
         $pendaftaranDua->status_seleksi = 'Tidak Lolos';
         $pendaftaranDua->save();
+        $mahasiswaTiga = $this->buatMahasiswa('222222237', 'Peserta Tahap Tiga');
+        $pendaftaranTiga = Pendaftaran::create([
+            'nim' => $mahasiswaTiga->nim,
+            'jabatan_1_id' => $jabatanDua->id,
+        ]);
+        $pendaftaranTiga->status_seleksi = 'Lulus Tahap 3';
+        $pendaftaranTiga->save();
 
         $this->actingAs($organisasi, 'organisasi')
             ->get(route('organisasi.rekrutmen.pendaftar', [
@@ -651,6 +678,13 @@ class SeleksiOrganisasiTest extends TestCase
             ->assertOk()
             ->assertSee('Peserta Lain')
             ->assertDontSee('Peserta Lulus');
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->get(route('organisasi.rekrutmen.pendaftar', ['filter_status' => 'Lulus Tahap 3']))
+            ->assertOk()
+            ->assertSee('Peserta Tahap Tiga')
+            ->assertDontSee('Peserta Lain')
+            ->assertSee('Lulus Tahap 3');
     }
 
     public function test_selection_submission_time_sort_is_processed_on_the_server(): void
@@ -759,6 +793,35 @@ class SeleksiOrganisasiTest extends TestCase
         $this->assertSame('2026-09-10 17:00', $seleksi->waktu_berakhir->format('Y-m-d H:i'));
         $this->assertSame(0, $pengumuman->tugas()->count());
         $this->assertSame(1, $seleksi->tugas()->count());
+
+        $halamanUpdate = $this->actingAs($organisasi, 'organisasi')
+            ->get(route('organisasi.rekrutmen.update', $periode))
+            ->assertOk()
+            ->assertSee('data-group-posisi=', false)
+            ->assertSee('data-tahapan=', false)
+            ->assertSee('listGroupPosisi: JSON.parse(atob($el.dataset.groupPosisi))', false)
+            ->assertSee('listTahapan: JSON.parse(atob($el.dataset.tahapan))', false)
+            ->assertSee('novalidate', false)
+            ->assertSee('validasiSebelumSimpan();', false)
+            ->assertSee('accept=".pdf,.doc,.docx,.xls,.xlsx', false)
+            ->assertDontSee('listGroupPosisi: [{', false);
+
+        $dom = new \DOMDocument();
+        $previousLibxmlErrorMode = libxml_use_internal_errors(true);
+        $dom->loadHTML($halamanUpdate->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousLibxmlErrorMode);
+        $rootAlpine = (new \DOMXPath($dom))->query('//*[@data-group-posisi]')->item(0);
+
+        $this->assertNotNull($rootAlpine);
+        $this->assertStringContainsString(
+            'listTahapan: JSON.parse(atob($el.dataset.tahapan))',
+            $rootAlpine->getAttribute('x-data'),
+        );
+        $this->assertStringContainsString(
+            'validasiSebelumSimpan()',
+            $rootAlpine->getAttribute('x-data'),
+        );
     }
 
     public function test_first_stage_cannot_be_changed_to_an_announcement_on_the_server(): void
@@ -784,6 +847,104 @@ class SeleksiOrganisasiTest extends TestCase
             'periode_rekrutmen_id' => $periode->id,
             'nama_tahapan' => 'Pengumuman Tidak Valid',
         ]);
+    }
+
+    public function test_stage_description_is_optional_and_task_attachment_accepts_excel(): void
+    {
+        Storage::fake('public');
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $excel = UploadedFile::fake()->createWithContent(
+            'lampiran-seleksi.xls',
+            "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1data-spreadsheet",
+        );
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.store_update', $periode), [
+                'slogan' => 'Bergabung Bersama Kami',
+                'deskripsi_rekrutmen' => 'Rekrutmen pengurus periode baru.',
+                'nama_posisi' => ['Pengurus Harian'],
+                'nama_jabatan' => ['Sekretaris'],
+                'tahapan' => [[
+                    'jenis_tahapan' => 'seleksi',
+                    'nama_tahapan' => 'Pendaftaran',
+                    'deskripsi' => '',
+                    'tanggal_mulai' => '2026-09-10T08:00',
+                    'tanggal_selesai' => '2026-09-10T17:00',
+                    'metode_distribusi' => 'sama',
+                    'tugas' => [[
+                        'nama_jabatan' => 'Sekretaris',
+                        'lampiran_files' => [$excel],
+                    ]],
+                ]],
+            ])
+            ->assertRedirect(route('organisasi.dashboard'));
+
+        $tahapan = Tahapan::query()->firstOrFail();
+        $this->assertSame('', $tahapan->deskripsi_tahapan);
+        $tugas = Tugas::query()->where('tahapan_id', $tahapan->id)->firstOrFail();
+        $lampiranTugas = $tugas->lampiran_tugas['berkas'] ?? [];
+        $this->assertNotEmpty($lampiranTugas);
+        Storage::disk('public')->assertExists($lampiranTugas[0]);
+    }
+
+    public function test_registered_job_cannot_be_removed_but_unregistered_job_can_be_removed(): void
+    {
+        $organisasi = $this->buatOrganisasi();
+        $periode = $this->buatPeriode($organisasi);
+        $tahapan = $this->buatTahapan($periode);
+        $jabatanTerdaftar = $this->buatJabatan($periode);
+        $jabatanTersisa = Jabatan::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'nama_posisi' => 'Pengurus Harian',
+            'nama_jabatan' => 'Bendahara',
+        ]);
+        $mahasiswa = $this->buatMahasiswa('222222239', 'Peserta Terdaftar');
+        Pendaftaran::create([
+            'nim' => $mahasiswa->nim,
+            'jabatan_1_id' => $jabatanTerdaftar->id,
+        ]);
+
+        $this->actingAs($organisasi, 'organisasi')
+            ->post(route('organisasi.rekrutmen.store_update', $periode), [
+                'slogan' => 'Bergabung Bersama Kami',
+                'deskripsi_rekrutmen' => 'Rekrutmen pengurus periode baru.',
+                'nama_posisi' => ['Pengurus Harian'],
+                'nama_jabatan' => ['Bendahara'],
+                'jabatan_ids' => [$jabatanTersisa->id],
+                'tahapan' => [[
+                    'id' => $tahapan->id,
+                    'jenis_tahapan' => 'seleksi',
+                    'nama_tahapan' => $tahapan->nama_tahapan,
+                    'deskripsi' => '',
+                    'tanggal_mulai' => $tahapan->waktu_mulai->format('Y-m-d\TH:i'),
+                    'tanggal_selesai' => $tahapan->waktu_berakhir->format('Y-m-d\TH:i'),
+                ]],
+            ])
+            ->assertSessionHasErrors('jabatan_ids');
+
+        $this->assertDatabaseHas('jabatan', ['id' => $jabatanTerdaftar->id]);
+
+        $jabatanTanpaPendaftar = Jabatan::create([
+            'periode_rekrutmen_id' => $periode->id,
+            'nama_posisi' => 'Pengurus Harian',
+            'nama_jabatan' => 'Publikasi',
+        ]);
+        Tugas::create([
+            'tahapan_id' => $tahapan->id,
+            'jabatan_id' => $jabatanTanpaPendaftar->id,
+            'tipe_tugas' => 'pengisian_form',
+            'tipe_jawaban_tugas' => 'form',
+        ]);
+
+        app(PositionSynchronizer::class)->synchronize(
+            $periode,
+            ['Pengurus Harian', 'Pengurus Harian'],
+            ['Sekretaris', 'Bendahara'],
+            [$jabatanTerdaftar->id, $jabatanTersisa->id],
+        );
+
+        $this->assertDatabaseMissing('jabatan', ['id' => $jabatanTanpaPendaftar->id]);
     }
 
     public function test_banner_with_an_unapproved_extension_is_rejected_before_it_is_stored(): void

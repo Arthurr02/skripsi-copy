@@ -45,7 +45,7 @@
                     class="mt-1 text-xs font-medium leading-relaxed text-slate-500"
                     x-text="currentTugas?.deskripsi"
                 ></p>
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="mt-4 flex flex-wrap gap-3">
                     <template
                         x-for="
                             (berkas, bIdx) in
@@ -56,7 +56,7 @@
                         <a
                             :href="'/storage/' + berkas"
                             target="_blank"
-                            class="w-min group flex items-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-2.5 transition-colors hover:border-blue-600 hover:bg-slate-50 shadow-sm"
+                            class="group flex w-fit items-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-2.5 transition-colors hover:border-blue-600 hover:bg-slate-50 shadow-sm"
                         >
                             <span
                                 class="flex min-w-0 items-center gap-2 text-slate-600 group-hover:text-blue-600"
@@ -84,7 +84,10 @@
                             :key="fIdx"
                         >
                             <!-- SINGLE ROOT ELEMENT UNTUK ALPINE -->
-                            <div class="flex flex-col w-full">
+                            <div
+                                class="flex flex-col w-full"
+                                :data-field-key="`isian_${fIdx}`"
+                            >
                                 <!-- Label -->
                                 <label
                                     class="block text-sm font-bold text-slate-700 mb-1 tracking-wide"
@@ -121,7 +124,10 @@
                                             ? 'text'
                                             : field.tipe"
                                         :name="`dynamic_answers[isian_${fIdx}]`"
+                                        :value="jawabanLama[`isian_${fIdx}`] ||
+                                        ''"
                                         :required="field.required"
+                                        :maxlength="['text_long', 'textarea', 'long_text'].includes(field.tipe) ? 5000 : 500"
                                         class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800"
                                     />
                                 </template>
@@ -138,7 +144,11 @@
                                 >
                                     <textarea
                                         :name="`dynamic_answers[isian_${fIdx}]`"
+                                        x-text="
+                                            jawabanLama[`isian_${fIdx}`] || ''
+                                        "
                                         :required="field.required"
+                                        maxlength="5000"
                                         rows="4"
                                         class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800 resize-y"
                                     ></textarea>
@@ -154,6 +164,8 @@
                                 >
                                     <select
                                         :name="`dynamic_answers[isian_${fIdx}]`"
+                                        :value="jawabanLama[`isian_${fIdx}`] ||
+                                        ''"
                                         :required="field.required"
                                         class="w-full border border-slate-300 focus:border-blue-600 focus:ring-0 rounded-md transition-colors text-sm font-bold py-2.5 px-3 sm:px-4 bg-white text-slate-800"
                                     >
@@ -203,6 +215,16 @@
                                                             ? `dynamic_answers[isian_${fIdx}][]`
                                                             : `dynamic_answers[isian_${fIdx}]`"
                                                         :value="opt"
+                                                        :checked="field.tipe ===
+                                                        'checkbox'
+                                                            ? (
+                                                                  jawabanLama[
+                                                                      `isian_${fIdx}`
+                                                                  ] || []
+                                                              ).includes(opt)
+                                                            : jawabanLama[
+                                                                  `isian_${fIdx}`
+                                                              ] === opt"
                                                         :required="field.tipe ===
                                                         'radio'
                                                             ? field.required
@@ -321,7 +343,24 @@
                                                                     '.xls',
                                                                     '.xlsx',
                                                                 ]
-                                                              : ['.' + format],
+                                                              : [
+                                                                      'image',
+                                                                      'gambar',
+                                                                      'foto',
+                                                                  ].includes(
+                                                                      format.toLowerCase(),
+                                                                  )
+                                                                ? [
+                                                                      '.jpg',
+                                                                      '.jpeg',
+                                                                      '.png',
+                                                                      'image/jpeg',
+                                                                      'image/png',
+                                                                  ]
+                                                                : [
+                                                                      '.' +
+                                                                          format,
+                                                                  ],
                                                     )
                                                     .join(',')"
                                                 :required="field.required &&
@@ -455,6 +494,7 @@
                     </label>
 
                     <div
+                        data-field-key="file_berkas"
                         role="button"
                         tabindex="0"
                         @click="$refs.input.click()"
@@ -489,7 +529,21 @@
                                         ? ['.doc', '.docx']
                                         : format === 'excel'
                                           ? ['.xls', '.xlsx']
-                                          : ['.' + format.trim()],
+                                          : [
+                                                  'image',
+                                                  'gambar',
+                                                  'foto',
+                                              ].includes(
+                                                  format.trim().toLowerCase(),
+                                              )
+                                            ? [
+                                                  '.jpg',
+                                                  '.jpeg',
+                                                  '.png',
+                                                  'image/jpeg',
+                                                  'image/png',
+                                              ]
+                                            : ['.' + format.trim()],
                                 )
                                 .join(',')"
                             @change="setBerkas($event.target.files)"
@@ -567,7 +621,7 @@
                             )
                             .forEach((el) => (el.style.display = 'none'));
 
-                        if (form.reportValidity()) {
+                        if (this.validasiFormulir() && form.reportValidity()) {
                             Swal.fire({
                                 icon: 'question',
                                 title: 'Konfirmasi Pendaftaran',

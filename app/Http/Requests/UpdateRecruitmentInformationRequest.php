@@ -24,7 +24,7 @@ class UpdateRecruitmentInformationRequest extends FormRequest
             'banner' => ['nullable', new SafeUploadedFile(['jpg', 'jpeg', 'png'], 2048)],
             'buku_pedoman' => ['nullable', new SafeUploadedFile(['pdf'])],
             'nama_posisi' => ['nullable', 'array'],
-            'nama_posisi.*' => ['nullable', 'string'],
+            'nama_posisi.*' => ['required', 'string'],
             'nama_jabatan' => ['required', 'array', 'min:1'],
             'nama_jabatan.*' => ['required', 'string', 'regex:/^[a-zA-Z0-9 ]+$/'],
             'jabatan_ids' => ['nullable', 'array'],
@@ -33,14 +33,14 @@ class UpdateRecruitmentInformationRequest extends FormRequest
             'tahapan.*.id' => ['nullable', 'integer', 'distinct'],
             'tahapan.*.jenis_tahapan' => ['required', 'in:pengumuman,seleksi'],
             'tahapan.*.nama_tahapan' => ['required', 'string'],
-            'tahapan.*.deskripsi' => ['required', 'string'],
+            'tahapan.*.deskripsi' => ['nullable', 'string'],
             'tahapan.*.waktu_pengumuman' => ['nullable', 'date', 'required_if:tahapan.*.jenis_tahapan,pengumuman'],
             'tahapan.*.tanggal_mulai' => ['nullable', 'date', 'required_if:tahapan.*.jenis_tahapan,seleksi'],
             'tahapan.*.tanggal_selesai' => ['nullable', 'date', 'after_or_equal:tahapan.*.tanggal_mulai', 'required_if:tahapan.*.jenis_tahapan,seleksi'],
             'tahapan.*.tugas.*.jabatan_id' => ['nullable', 'integer'],
             'tahapan.*.tugas.*.id' => ['nullable', 'integer'],
             'tahapan.*.tugas.*.deskripsi_tugas' => ['nullable', 'string'],
-            'tahapan.*.tugas.*.lampiran_files.*' => ['nullable', new SafeUploadedFile(['pdf', 'doc', 'docx'], 2048)],
+            'tahapan.*.tugas.*.lampiran_files.*' => ['nullable', new SafeUploadedFile(['pdf', 'doc', 'docx', 'xls', 'xlsx'], 2048)],
         ];
     }
 

@@ -88,7 +88,7 @@
                                     <input
                                         type="text"
                                         x-model="field.label"
-                                        placeholder="Tuliskan Pertanyaan / Aspek Penilaian..."
+                                        placeholder="Tuliskan Pertanyaan"
                                         class="w-full text-sm font-bold text-slate-800 rounded-md border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white py-2.5 px-3 transition-colors shadow-sm"
                                     />
 
@@ -149,42 +149,79 @@
                                     <optgroup
                                         label="Teks & Angka"
                                         x-show="!isWawancaraMode"
+                                        class="text-blue-600 font-extrabold bg-slate-100"
                                     >
-                                        <option value="text_short">
+                                        <option
+                                            value="text_short"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
                                             Teks Pendek
                                         </option>
-                                        <option value="text_long">
-                                            Teks Paragraf
+                                        <option
+                                            value="text_long"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
+                                            Teks Area
                                         </option>
-                                        <option value="email">Email</option>
-                                        <option value="number">Angka</option>
+                                        <option
+                                            value="email"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
+                                            Email
+                                        </option>
+                                        <option
+                                            value="number"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
+                                            Angka
+                                        </option>
                                     </optgroup>
                                     <optgroup
-                                        label="Pilihan Bersarang"
+                                        label="Pilihan Opsi"
                                         x-show="!isWawancaraMode"
+                                        class="text-blue-600 font-extrabold bg-slate-100"
                                     >
-                                        <option value="select">
+                                        <option
+                                            value="select"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
                                             Dropdown Select
                                         </option>
-                                        <option value="radio">Radiobox</option>
-                                        <option value="checkbox">
+                                        <option
+                                            value="radio"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
+                                            Radiobox
+                                        </option>
+                                        <option
+                                            value="checkbox"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
                                             Checkbox
                                         </option>
                                     </optgroup>
                                     <optgroup
                                         label="Berkas"
                                         x-show="!isWawancaraMode"
+                                        class="text-blue-600 font-extrabold bg-slate-100"
                                     >
-                                        <option value="file">
+                                        <option
+                                            value="file"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
                                             Upload File / Dokumen
                                         </option>
                                     </optgroup>
                                     <optgroup
                                         label="Format Wawancara"
                                         x-show="isWawancaraMode"
+                                        class="text-blue-600 font-extrabold bg-slate-100"
                                     >
-                                        <option value="text_long">
-                                            Teks Paragraf (Catatan Evaluasi)
+                                        <option
+                                            value="text_long"
+                                            class="text-slate-700 font-medium bg-white"
+                                        >
+                                            Teks Area
                                         </option>
                                     </optgroup>
                                 </select>
@@ -242,7 +279,7 @@
                                             <input
                                                 type="text"
                                                 x-model="field.options[oIdx]"
-                                                placeholder="Tulis opsi..."
+                                                placeholder="Tuliskan opsi jawaban"
                                                 class="text-xs font-bold text-slate-700 rounded-md border-slate-300 py-1.5 px-3 flex-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white shadow-sm"
                                             />
                                             <button
@@ -427,11 +464,10 @@
     </div>
     <div class="flex flex-col">
         <span class="text-sm font-extrabold text-white leading-tight"
-            >Formulir Diterapkan!</span
+            >Formulir Berhasil Diterapkan!</span
         >
         <span class="text-[11px] text-emerald-100 font-medium mt-0.5"
-            >Klik tombol "Simpan & Lanjutkan" di bagian bawah halaman untuk
-            memfinalisasi.</span
+            >Segera finalisasi dengan klik tombol "Simpan".</span
         >
     </div>
 </div>

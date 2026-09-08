@@ -1,31 +1,52 @@
 @php
     $isRiwayat = $isRiwayat ?? false;
     $isOrganisasi = Auth::guard('organisasi')->check();
-    $urlJawaban = $isRiwayat
-        ? route($routePrefix . 'riwayat.tahapan', [
-            'periode_id' => $periodeAktif?->id ?? '__PERIODE__',
-            'jabatan_id' => '__JABATAN__',
-            'tahapan_id' => '__TAHAPAN__',
-        ])
-        : route($routePrefix . 'rekrutmen.seleksi.jawaban', [
-            'tahapanId' => '__TAHAPAN__',
-            'jabatanId' => '__JABATAN__',
-        ]);
+    // Bangun URL final di server agar tombol tahap pertama tidak bergantung
+    // pada penggantian placeholder di JavaScript yang dapat ter-encode oleh router.
+    $urlJawaban = [];
+    foreach ($tahapans as $tahapan) {
+        foreach ($listJabatan as $jabatan) {
+            $urlJawaban[$tahapan->id][$jabatan->id] = $isRiwayat
+                ? route($routePrefix . 'riwayat.tahapan', [
+                    'periode_id' => $periodeAktif->id,
+                    'jabatan_id' => $jabatan->id,
+                    'tahapan_id' => $tahapan->id,
+                ])
+                : route($routePrefix . 'rekrutmen.seleksi.jawaban', [
+                    'tahapanId' => $tahapan->id,
+                    'jabatanId' => $jabatan->id,
+                ]);
+        }
+    }
+
+    $encodedUrlJawaban = base64_encode(json_encode($urlJawaban));
+    $encodedPesertaPerTahapanJabatan = base64_encode(
+        json_encode($pesertaPerTahapanJabatan ?? []),
+    );
+    $encodedWaktuTahapanTerakhir = base64_encode($waktuTahapanTerakhir ?? '');
 @endphp
 
 <x-app-layout>
     <div
+        data-url-jawaban="{{ $encodedUrlJawaban }}"
+        data-peserta-per-tahapan-jabatan="{{ $encodedPesertaPerTahapanJabatan }}"
+        data-semua-tahapan-berakhir="{{ ($semuaTahapanBerakhir ?? false) ? '1' : '0' }}"
+        data-waktu-tahapan-terakhir="{{ $encodedWaktuTahapanTerakhir }}"
         x-data="{
             modalTerbuka: false,
             tahapanAktif: null,
-            urlJawaban: @js($urlJawaban),
-            pesertaPerTahapanJabatan: @js($pesertaPerTahapanJabatan ?? []),
-            semuaTahapanBerakhir: @js($semuaTahapanBerakhir ?? false),
-            waktuTahapanTerakhir: @js($waktuTahapanTerakhir ?? null),
+            urlJawaban: JSON.parse(atob($el.dataset.urlJawaban)),
+            pesertaPerTahapanJabatan: JSON.parse(
+                atob($el.dataset.pesertaPerTahapanJabatan),
+            ),
+            semuaTahapanBerakhir: $el.dataset.semuaTahapanBerakhir === '1',
+            waktuTahapanTerakhir:
+                atob($el.dataset.waktuTahapanTerakhir) || null,
             bukaTahapan(tahapan) {
                 this.tahapanAktif = {
                     ...tahapan,
-                    pesertaPerJabatan: this.pesertaPerTahapanJabatan[tahapan.id] || {},
+                    pesertaPerJabatan:
+                        this.pesertaPerTahapanJabatan[tahapan.id] || {},
                 };
                 this.modalTerbuka = true;
                 document.body.style.overflow = 'hidden';
@@ -59,7 +80,12 @@
 
                 const tutup = () => form.submit();
                 if (!window.Swal) {
-                    if (window.confirm('Tutup rekrutmen dan pindahkan ke riwayat?')) tutup();
+                    if (
+                        window.confirm(
+                            'Tutup rekrutmen dan pindahkan ke riwayat?',
+                        )
+                    )
+                        tutup();
                     return;
                 }
 
@@ -74,7 +100,7 @@
                 }).then((hasil) => {
                     if (hasil.isConfirmed) tutup();
                 });
-            }
+            },
         }"
         @keydown.escape.window="tutupModal()"
     >
@@ -308,7 +334,11 @@
                                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-bold text-slate-700 rounded-md shadow-sm transition-colors w-fit"
                                                 >
                                                     <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0-3-3m3 3 3-3m2 8H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a.707.707 0 0 1 .5.207l5.707 5.707a.707.707 0 0 1 .207.5V19a2 2 0 0 1-2 2Z" /></svg>
-                                                    {{ $tahapan->jenis_tahapan === 'pengumuman' ? 'Unduh Pengumuman' : 'Unduh Panduan Tahapan' }}
+                                                    {{
+                                                        $tahapan->jenis_tahapan === 'pengumuman'
+                                                            ? 'Unduh Pengumuman'
+                                                            : 'Unduh Panduan Tahapan'
+                                                    }}
                                                 </a>
                                             @endif
 
@@ -330,8 +360,20 @@
                                                 @if ($isRiwayat)
                                                     <button
                                                         type="button"
-                                                        @click='bukaTahapan(@json(['id' => $tahapan->id, 'nama' => $tahapan->nama_tahapan]))'
-                                                        class="flex w-full sm:w-auto justify-center items-center gap-2 py-3 px-5 bg-slate-800 text-white hover:bg-slate-900 shadow-sm text-xs font-bold rounded-lg transition-colors"
+                                                        data-tahapan-id="{{ $tahapan->id }}"
+                                                        data-tahapan-nama="{{ $tahapan->nama_tahapan }}"
+                                                        @click="
+                                                            bukaTahapan({
+                                                                id: Number(
+                                                                    $el.dataset
+                                                                        .tahapanId,
+                                                                ),
+                                                                nama: $el
+                                                                    .dataset
+                                                                    .tahapanNama,
+                                                            })
+                                                        "
+                                                        class="flex w-full justify-center items-center gap-2 py-3 px-5 bg-slate-800 text-white hover:bg-slate-900 shadow-sm text-xs font-bold rounded-lg transition-colors"
                                                     >
                                                         Lihat Riwayat Seleksi
                                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2M9 12h6m-6 4h6m-8-4h.01M9 16h.01" /></svg>
@@ -342,7 +384,20 @@
                                                     >
                                                         <button
                                                             type="button"
-                                                            @click='bukaTahapan(@json(['id' => $tahapan->id, 'nama' => $tahapan->nama_tahapan]))'
+                                                            data-tahapan-id="{{ $tahapan->id }}"
+                                                            data-tahapan-nama="{{ $tahapan->nama_tahapan }}"
+                                                            @click="
+                                                                bukaTahapan({
+                                                                    id: Number(
+                                                                        $el
+                                                                            .dataset
+                                                                            .tahapanId,
+                                                                    ),
+                                                                    nama: $el
+                                                                        .dataset
+                                                                        .tahapanNama,
+                                                                })
+                                                            "
                                                             class="flex-1 flex justify-center items-center gap-2 py-3 px-5 bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md text-xs font-bold rounded-lg transition-all"
                                                         >
                                                             Lakukan Seleksi
@@ -527,7 +582,8 @@
                             >
                                 @foreach ($jabatans as $jabatan)
                                     <a
-                                        :href="urlJawaban.replace('__TAHAPAN__', tahapanAktif?.id).replace('__JABATAN__', '{{ $jabatan->id }}')"
+                                        :href="urlJawaban[tahapanAktif?.id]?.[{{ $jabatan->id }}] || '#'"
+                                        @click="if (!urlJawaban[tahapanAktif?.id]?.[{{ $jabatan->id }}]) $event.preventDefault()"
                                         class="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 sm:py-3.5 transition-all hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm group gap-1 sm:gap-0"
                                     >
                                         <span

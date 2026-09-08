@@ -26,7 +26,11 @@
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 18-6-6 6-6" />
             </svg>
-            Kembali ke {{ $isRiwayatMahasiswa ? 'Riwayat Tahapan' : 'Daftar Tugas' }}
+            Kembali ke {{
+                $isRiwayatMahasiswa
+                    ? 'Riwayat Tahapan'
+                    : 'Daftar Tugas'
+            }}
         </a>
 
         <!-- Header Profil/Tugas -->
@@ -69,19 +73,23 @@
             x-data="{ isEditing: {{ $isRiwayatMahasiswa ? 'false' : ($errors->any() ? 'true' : ($pengumpulan && ! $dapatDikerjakan ? 'false' : ($pengumpulan ? 'false' : 'true'))) }} }"
             class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
         >
-            <!-- Lampiran / Header Form -->
-            @if (!empty($lampiranPenugasan))
-                <div
-                    class="border-b border-slate-100 bg-blue-50 px-5 sm:px-10 py-5 sm:py-6"
-                >
-                    <h2
-                        class="text-sm font-extrabold text-slate-800 tracking-wide"
-                    >
-                        Instruksi Penugasan
-                    </h2>
-                    <p class="mt-1 text-xs font-medium leading-relaxed text-slate-500">{{ $tugas->deskripsi_tugas }}</p>
+            <!-- Informasi tahap seleksi tersedia setelah tahap dimulai. -->
+            <div
+                class="border-b border-slate-100 bg-blue-50 px-5 sm:px-10 py-5 sm:py-6"
+            >
+                <h2 class="text-sm font-extrabold text-slate-800 tracking-wide">
+                    Instruksi Penugasan
+                </h2>
+                <p class="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+                    {{
+                        $tugas->deskripsi_tugas ?:
+                            ($tugas->tahapan->deskripsi_tahapan ?:
+                                'Lengkapi seluruh isian yang tersedia dengan benar sebelum batas waktu berakhir.')
+                    }}
+                </p>
 
-                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                @if (!empty($lampiranPedomanTahapan) || !empty($lampiranPenugasan))
+                    <div class="mt-4 flex flex-wrap gap-3">
                         @foreach ($lampiranPenugasan as $indeks => $berkas)
                             <a
                                 href="{{ asset('storage/' . $berkas) }}"
@@ -93,25 +101,14 @@
                                 >
                                     <svg class="text-blue-600 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                     <span class="truncate text-xs font-bold"
-                                        >Unduh Lampiran {{ $indeks + 1 }}</span
+                                        >Unduh Lampiran Penugasan {{ $indeks + 1 }}</span
                                     >
                                 </span>
                             </a>
                         @endforeach
                     </div>
-                </div>
-            @else
-                <div
-                    class="border-b border-slate-100 bg-slate-50 px-5 sm:px-10 py-5 sm:py-6"
-                >
-                    <h2
-                        class="text-sm font-extrabold text-slate-800 tracking-wide"
-                    >
-                        Formulir Pengerjaan Tugas
-                    </h2>
-                    <p class="mt-1 text-xs font-medium leading-relaxed text-slate-500">Lengkapi seluruh isian yang tersedia dengan benar. Pastikan untuk menyimpan perubahan sebelum batas waktu berakhir.</p>
-                </div>
-            @endif
+                @endif
+            </div>
 
             <form
                 action="{{ route('mahasiswa.rekrutmen.diikuti.tugas_submit', ['pendaftaran' => $pendaftaran->id, 'tugas' => $tugas->id]) }}"
@@ -278,7 +275,62 @@
                                     @case ('file')
                                         @php $berkasTersimpan = array_values((array) $existingValue); @endphp
                                         <div
-                                            x-data="{ baru: [], tersimpan: @js($berkasTersimpan), tampilkan(files) { this.baru = Array.from(files || []).map(file => ({ file, nama: file.name, ukuran: (file.size / 1048576).toFixed(2) + ' MB' })); }, terimaDrop(files) { const data = new DataTransfer(); [...this.baru.map(item => item.file), ...Array.from(files || [])].forEach(file => data.items.add(file)); this.$refs.input.files = data.files; this.tampilkan(data.files); }, hapusBaru(i) { this.baru.splice(i, 1); const data = new DataTransfer(); this.baru.forEach(item => data.items.add(item.file)); this.$refs.input.files = data.files; }, hapusTersimpan(i) { this.tersimpan.splice(i, 1); } }"
+                                            data-berkas-tersimpan="{{ base64_encode(json_encode($berkasTersimpan)) }}"
+                                            x-data="{
+                                                baru: [],
+                                                tersimpan: JSON.parse(
+                                                    atob(
+                                                        $el.dataset
+                                                            .berkasTersimpan,
+                                                    ),
+                                                ),
+                                                tampilkan(files) {
+                                                    this.baru = Array.from(
+                                                        files || [],
+                                                    ).map((file) => ({
+                                                        file,
+                                                        nama: file.name,
+                                                        ukuran:
+                                                            (
+                                                                file.size /
+                                                                1048576
+                                                            ).toFixed(2) +
+                                                            ' MB',
+                                                    }));
+                                                },
+                                                terimaDrop(files) {
+                                                    const data =
+                                                        new DataTransfer();
+                                                    [
+                                                        ...this.baru.map(
+                                                            (item) => item.file,
+                                                        ),
+                                                        ...Array.from(
+                                                            files || [],
+                                                        ),
+                                                    ].forEach((file) =>
+                                                        data.items.add(file),
+                                                    );
+                                                    this.$refs.input.files =
+                                                        data.files;
+                                                    this.tampilkan(data.files);
+                                                },
+                                                hapusBaru(i) {
+                                                    this.baru.splice(i, 1);
+                                                    const data =
+                                                        new DataTransfer();
+                                                    this.baru.forEach((item) =>
+                                                        data.items.add(
+                                                            item.file,
+                                                        ),
+                                                    );
+                                                    this.$refs.input.files =
+                                                        data.files;
+                                                },
+                                                hapusTersimpan(i) {
+                                                    this.tersimpan.splice(i, 1);
+                                                },
+                                            }"
                                             class="rounded-md border border-slate-200 bg-white p-4"
                                         >
                                             <div
@@ -293,8 +345,19 @@
                                                 "
                                                 @dragover.prevent
                                                 @drop.prevent="
-                                                    window.rekrutmenValidateDroppedFiles($refs.input, $event.dataTransfer.files)
-                                                        .then(files => files && terimaDrop(files))
+                                                    window
+                                                        .rekrutmenValidateDroppedFiles(
+                                                            $refs.input,
+                                                            $event.dataTransfer
+                                                                .files,
+                                                        )
+                                                        .then(
+                                                            (files) =>
+                                                                files &&
+                                                                terimaDrop(
+                                                                    files,
+                                                                ),
+                                                        )
                                                 "
                                                 :class="baru.length
                                                     ? 'border-blue-400 bg-blue-50'
@@ -313,7 +376,7 @@
                                                     name="jawaban_file[{{ $fieldName }}][]"
                                                     multiple
                                                     class="sr-only"
-                                                    accept="{{ collect($item['allowed_formats'] ?: ['pdf', 'doc', 'docx'])->flatMap(fn ($format) => $format === 'word' ? ['.doc,.docx'] : ($format === 'excel' ? ['.xls,.xlsx'] : ['.' . $format]))->implode(',') }}"
+                                                    accept="{{ collect($item['allowed_formats'] ?: ['pdf', 'doc', 'docx'])->flatMap(fn ($format) => in_array(strtolower(trim($format)), ['image', 'gambar', 'foto'], true) ? ['.jpg', '.jpeg', '.png', 'image/jpeg', 'image/png'] : ($format === 'word' ? ['.doc', '.docx'] : ($format === 'excel' ? ['.xls', '.xlsx'] : (strtolower(trim($format)) === 'zip' ? ['.zip', 'application/zip', 'application/x-zip-compressed'] : ['.' . trim($format)]))))->implode(',') }}"
                                                     {{
                                                         $isRequired && empty($berkasTersimpan)
                                                             ? 'required'

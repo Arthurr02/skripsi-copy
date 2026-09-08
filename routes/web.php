@@ -141,6 +141,7 @@ Route::middleware(['auth', 'mahasiswa_biasa'])->prefix('mahasiswa')->name('mahas
         Route::get('/', [RiwayatPendaftaranController::class, 'index'])->name('index');
         Route::get('/diikuti/{id}/tahapan', [RekrutmenDiikutiController::class, 'showTahapanRiwayat'])->name('diikuti.tahapan');
         Route::get('/diikuti/{pendaftaran}/tugas/{tugas}', [RekrutmenDiikutiController::class, 'showTugasRiwayat'])->name('diikuti.tugas');
+        Route::get('/{periode_id}/tahapan', [RiwayatPendaftaranController::class, 'showTahapan'])->name('tahapan');
         Route::get('/{periode_id}/pengumuman', [RiwayatPendaftaranController::class, 'showTahapanPengumuman'])->name('pengumuman');
     });
 
